@@ -9,4 +9,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class ExpertProfile extends BaseEntity {
-}// ExpertProfile.java
+    private String bio;
+    private Integer experience;
+    private String portfolio;
+    private Double hourlyRate;
+    private Double rating;
+}
