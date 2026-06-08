@@ -1,4 +1,4 @@
-package com.aitasker.entity;
+package com.aitasker.user.entity;
 
 import jakarta.persistence.*;
 

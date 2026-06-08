@@ -1,6 +1,6 @@
-package com.aitasker.repository;
+package com.aitasker.user.repository;
 
-import com.aitasker.entity.User;
+import com.aitasker.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository
