@@ -3,9 +3,9 @@ spring:
     name: aitasker
 
   datasource:
-    url: jdbc:sqlserver://localhost:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true
+    url: jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true
     username: sa
-    password: 123456
+    password: Aa123456 #tự đổi theo pass SQL Server của mọi người
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
