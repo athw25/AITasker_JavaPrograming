@@ -5,7 +5,11 @@ spring:
   datasource:
     url: jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true
     username: sa
+<<<<<<< HEAD
     password: Aa123456 #tự đổi theo pass SQL Server của mọi người
+=======
+    password: Aa123456
+>>>>>>> 556c046bb4dd3795b980ff8f57cd7ae5d4c82f35
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
@@ -15,5 +19,9 @@ spring:
 
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.SQLServerDialect
         format_sql: true
+
+app:
+  jwt:
+    secret: "aitasker-jwt-secret-key-must-be-at-least-32-characters"
+    expiration-ms: 86400000
