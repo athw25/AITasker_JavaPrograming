@@ -1,3 +1,4 @@
+// Temporary stub implementation for AuthService
 package com.aitasker.auth.service;
 
 import org.springframework.stereotype.Service;
