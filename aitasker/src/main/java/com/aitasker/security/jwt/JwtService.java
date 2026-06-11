@@ -40,4 +40,14 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+    // Phuc An: thêm hàm generateToken để tạo chuỗi JWT cấp cho User
+    public String generateToken(UserDetails userDetails) {
+        return Jwts.builder()
+                .subject(userDetails.getUsername())
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
+                .signWith(signingKey)
+                .compact();
+    }
 }
