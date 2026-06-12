@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AITasker - WebSocket Foundation Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        .client-section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .client-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .messages-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 15px;
+            height: 200px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            background-color: #e7f3fe;
+            border-left: 3px solid #2196F3;
+            font-size: 13px;
+        }
+        .message.sent {
+            background-color: #d4edda;
+            border-left: 3px solid #28a745;
+        }
+        .message-sender {
+            font-weight: bold;
+            color: #333;
+        }
+        .message-time {
+            color: #999;
+            font-size: 11px;
+        }
+        .message-content {
+            margin-top: 3px;
+            color: #555;
+        }
+        .info-box {
+            background-color: #e3f2fd;
+            border: 1px solid #2196F3;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1565c0;
+        }
+        .info-box h3 {
+            margin-top: 0;
+        }
+        .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info-box li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+<h1>AITasker - WebSocket Foundation Test</h1>
+
+<div class="container">
+    <!-- Client A -->
+    <div class="client-section">
+        <h2>Client A</h2>
+        
+        <div class="form-group">
+            <label for="senderA">Sender ID:</label>
+            <input type="text" id="senderA" value="Client_A" placeholder="e.g., Client_A">
+        </div>
+
+        <div class="form-group">
+            <label for="messageA">Message:</label>
+            <textarea id="messageA" placeholder="Type your message here..."></textarea>
+        </div>
+
+        <button id="sendBtnA" onclick="sendMessage('A')">Send Message</button>
+
+        <div id="statusA" class="status disconnected">Disconnected</div>
+
+        <label style="margin-top: 15px;">Received Messages:</label>
+        <div id="messagesA" class="messages-box"></div>
+    </div>
+
+    <!-- Client B -->
+    <div class="client-section">
+        <h2>Client B</h2>
+        
+        <div class="form-group">
+            <label for="senderB">Sender ID:</label>
+            <input type="text" id="senderB" value="Client_B" placeholder="e.g., Client_B">
+        </div>
+
+        <div class="form-group">
+            <label for="messageB">Message:</label>
+            <textarea id="messageB" placeholder="Type your message here..."></textarea>
+        </div>
+
+        <button id="sendBtnB" onclick="sendMessage('B')">Send Message</button>
+
+        <div id="statusB" class="status disconnected">Disconnected</div>
+
+        <label style="margin-top: 15px;">Received Messages:</label>
+        <div id="messagesB" class="messages-box"></div>
+    </div>
+</div>
+
+<div class="info-box">
+    <h3>Testing Instructions</h3>
+    <ul>
+        <li><strong>Step 1:</strong> Open this page in two browser tabs</li>
+        <li><strong>Step 2:</strong> Both clients should auto-connect (status shows "Connected")</li>
+        <li><strong>Step 3:</strong> In Client A, type a message and click "Send Message"</li>
+        <li><strong>Step 4:</strong> Verify that Client B receives the message in its message list</li>
+        <li><strong>Step 5:</strong> Send a message from Client B and verify Client A receives it</li>
+        <li><strong>Expected Result:</strong> Messages broadcast to all connected clients in real-time</li>
+    </ul>
+</div>
+
+<div class="info-box">
+    <h3>Architecture</h3>
+    <ul>
+        <li><strong>Protocol:</strong> WebSocket with STOMP messaging</li>
+        <li><strong>Endpoint:</strong> /ws (with SockJS fallback)</li>
+        <li><strong>Broker:</strong> Simple in-memory broker (/topic)</li>
+        <li><strong>Application Prefix:</strong> /app</li>
+        <li><strong>Broadcast Destination:</strong> /topic/messages</li>
+        <li><strong>Send Destination:</strong> /app/chat.send</li>
+    </ul>
+</div>
+
+<script>
+    // Global variables for both clients
+    let stompClientA = null;
+    let stompClientB = null;
+
+    /**
+     * Initialize WebSocket connection for a client
+     * @param {string} clientId - 'A' or 'B'
+     */
+    function initClient(clientId) {
+        const socket = new SockJS('/ws');
+        const stompClient = Stomp.over(socket);
+        
+        // Disable console logging for cleaner output
+        stompClient.debug = null;
+
+        stompClient.connect({}, function(frame) {
+            console.log(`Client ${clientId} connected`);
+            updateStatus(clientId, true);
+
+            // Subscribe to broadcast messages
+            stompClient.subscribe('/topic/messages', function(messageOutput) {
+                const message = JSON.parse(messageOutput.body);
+                addMessageToDisplay(clientId, message);
+            });
+        }, function(error) {
+            console.error(`Client ${clientId} error:`, error);
+            updateStatus(clientId, false);
+            
+            // Attempt reconnection after 5 seconds
+            setTimeout(() => initClient(clientId), 5000);
+        });
+
+        return stompClient;
+    }
+
+    /**
+     * Send message from specified client
+     * @param {string} clientId - 'A' or 'B'
+     */
+    function sendMessage(clientId) {
+        const senderInput = document.getElementById(`sender${clientId}`);
+        const messageInput = document.getElementById(`message${clientId}`);
+        const stompClient = clientId === 'A' ? stompClientA : stompClientB;
+
+        const sender = senderInput.value.trim();
+        const content = messageInput.value.trim();
+
+        if (!sender || !content) {
+            alert('Please enter both sender ID and message content');
+            return;
+        }
+
+        if (!stompClient || !stompClient.connected) {
+            alert(`Client ${clientId} is not connected`);
+            return;
+        }
+
+        // Create message object
+        const chatMessage = {
+            sender: sender,
+            content: content
+        };
+
+        // Send to server
+        stompClient.send('/app/chat.send', {}, JSON.stringify(chatMessage));
+
+        // Clear input
+        messageInput.value = '';
+        messageInput.focus();
+    }
+
+    /**
+     * Add message to display box
+     * @param {string} clientId - 'A' or 'B'
+     * @param {object} message - ChatMessage object
+     */
+    function addMessageToDisplay(clientId, message) {
+        const messagesBox = document.getElementById(`messages${clientId}`);
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message';
+
+        const time = new Date().toLocaleTimeString();
+        const senderSpan = document.createElement('span');
+        senderSpan.className = 'message-sender';
+        senderSpan.textContent = message.sender;
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'message-time';
+        timeSpan.textContent = ` [${time}]`;
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = message.content;
+
+        messageDiv.appendChild(senderSpan);
+        messageDiv.appendChild(timeSpan);
+        messageDiv.appendChild(contentDiv);
+
+        messagesBox.appendChild(messageDiv);
+        
+        // Auto-scroll to bottom
+        messagesBox.scrollTop = messagesBox.scrollHeight;
+    }
+
+    /**
+     * Update connection status display
+     * @param {string} clientId - 'A' or 'B'
+     * @param {boolean} connected - true if connected
+     */
+    function updateStatus(clientId, connected) {
+        const statusDiv = document.getElementById(`status${clientId}`);
+        if (connected) {
+            statusDiv.textContent = 'Connected';
+            statusDiv.className = 'status connected';
+            document.getElementById(`sendBtn${clientId}`).disabled = false;
+        } else {
+            statusDiv.textContent = 'Disconnected';
+            statusDiv.className = 'status disconnected';
+            document.getElementById(`sendBtnA`).disabled = true;
+            document.getElementById(`sendBtnB`).disabled = true;
+        }
+    }
+
+    // Initialize both clients on page load
+    window.onload = function() {
+        console.log('Initializing WebSocket clients...');
+        stompClientA = initClient('A');
+        stompClientB = initClient('B');
+    };
+
+    // Clean up on page unload
+    window.onbeforeunload = function() {
+        if (stompClientA && stompClientA.connected) stompClientA.disconnect(() => {});
+        if (stompClientB && stompClientB.connected) stompClientB.disconnect(() => {});
+    };
+</script>
+
+</body>
+</html>
