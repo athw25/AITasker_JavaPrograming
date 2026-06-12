@@ -1,4 +1,4 @@
-package com.aitasker.mappertest;
+package com.aitasker.commontest.mappertest;
 
 import com.aitasker.common.mapper.GenericMapper;
 import com.aitasker.user.entity.User;

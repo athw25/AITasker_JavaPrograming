@@ -1,4 +1,4 @@
-package com.aitasker;
+package com.aitasker.commontest;
 
 import com.aitasker.common.util.ValidationUtils;
 
