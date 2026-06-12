@@ -39,6 +39,8 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/ws/**", "/sockjs/**").permitAll()
+                        .requestMatchers("/websocket-test.html").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
