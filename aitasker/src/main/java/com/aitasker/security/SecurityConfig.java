@@ -16,6 +16,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+
 @Configuration
 @EnableMethodSecurity
 @RequiredArgsConstructor
@@ -23,6 +25,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
     // Phuc An: thêm Bean PasswordEncoder.
     // Mục đích: Cung cấp công cụ cho AuthServiceImpl mã hóa mật khẩu người dùng lúc Register.
@@ -47,9 +52,16 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/expert/**").hasAnyRole("EXPERT", "ADMIN")
                         .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "ADMIN")
+
+                        .requestMatchers("/api/users/**")
+                        .authenticated()
+
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
+)                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

@@ -5,6 +5,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -33,6 +37,28 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse> handleBusiness(BusinessException ex){
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new BaseResponse(false, ex.getMessage()));
     }
+
+    // Lỗi validation DTO (@Valid)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, String>> handleValidationException(
+            MethodArgumentNotValidException ex
+    ) {
+
+        Map<String, String> errors = new HashMap<>();
+
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error ->
+                        errors.put(
+                                error.getField(),
+                                error.getDefaultMessage()
+                        ));
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(errors);
+    }
+
     //Lỗi hệ thống chung(500)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse> handleException(Exception ex){
