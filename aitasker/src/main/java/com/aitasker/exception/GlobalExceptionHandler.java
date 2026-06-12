@@ -38,4 +38,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse> handleException(Exception ex){
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new BaseResponse(false, "Internal Server Error"));
     }
+
+    //Lỗi IllegalArgumentException - thường dùng cho các lỗi liên quan đến dữ liệu đầu vào không hợp lệ, hoặc lỗi logic trong code.
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<BaseResponse> handleIllegalArgument(
+            IllegalArgumentException ex
+    ) {
+        return ResponseEntity.badRequest().body(
+                new BaseResponse(false, ex.getMessage())
+        );
+    }
 }
