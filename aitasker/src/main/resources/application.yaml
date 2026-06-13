@@ -6,7 +6,7 @@ spring:
   #  Thay đổi cấu hình kết nối theo môi trường của bạn, lưu ý tạo database AITasker trước khi chạy ứng dụng
     url: jdbc:sqlserver://localhost:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true 
     username: sa
-    password: Aa123456 # Thay đổi mật khẩu này theo cấu hình của bạn 
+    password: 123456 # Thay đổi mật khẩu này theo cấu hình của bạn
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
