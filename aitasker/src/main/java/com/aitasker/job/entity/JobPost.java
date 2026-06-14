@@ -1,6 +1,7 @@
 package com.aitasker.job.entity;
 import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.common.enums.JobStatus;
+import com.aitasker.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,5 +21,9 @@ public class JobPost extends BaseEntity {
     private String requiredSkills;
     @Enumerated(EnumType.STRING)
     private JobStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "Client_id")
+    private User client;
 
 }
