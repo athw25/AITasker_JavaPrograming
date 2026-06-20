@@ -1,4 +1,5 @@
-package com.aitasker.common.enums;// ProposalStatus.java
+// ProposalStatus.java
+package com.aitasker.common.enums;
 
 public enum ProposalStatus {
     PENDING,
