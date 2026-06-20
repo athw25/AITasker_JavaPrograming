@@ -1,4 +1,4 @@
-package com.aitasker.mappertest;
+package com.aitasker.commontest.mappertest;
 
 public class UserDto {
 

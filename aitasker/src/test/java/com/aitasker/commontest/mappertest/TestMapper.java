@@ -1,4 +1,4 @@
-package com.aitasker.mappertest;
+package com.aitasker.commontest.mappertest;
 
 import com.aitasker.user.entity.User;
 import java.util.List;
