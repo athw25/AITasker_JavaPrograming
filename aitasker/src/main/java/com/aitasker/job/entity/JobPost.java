@@ -1,6 +1,7 @@
 package com.aitasker.job.entity;
 import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.common.enums.JobStatus;
+import com.aitasker.user.entity.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,6 +13,10 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class JobPost extends BaseEntity {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    private User client;
+
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
