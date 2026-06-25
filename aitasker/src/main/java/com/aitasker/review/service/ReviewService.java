@@ -66,10 +66,9 @@ public class ReviewService {
         if(review.getReviewer() != null){
             res.setReviewerId(review.getReviewer().getId());
             res.setReviewerName(review.getReviewer().getName());
-        }
-        if(review.getReviewee() != null){
-            res.setReviewerId(review.getReviewee().getId());
-            res.setReviewerName(review.getReviewee().getName());
+        }if(review.getReviewee() != null){
+            res.setRevieweeId(review.getReviewee().getId());
+            res.setRevieweeName(review.getReviewee().getName());
         }
         if(review.getProject() != null){
             res.setProjectId(review.getProject().getId());
