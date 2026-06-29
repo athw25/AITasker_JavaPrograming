@@ -1,4 +1,16 @@
-// NotificationService.java
+package com.aitasker.notification.service;
+
+import com.aitasker.notification.entity.Notification;
+import com.aitasker.notification.repository.NotificationRepository;
+import com.aitasker.user.entity.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class NotificationService {

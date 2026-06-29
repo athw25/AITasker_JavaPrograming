@@ -11,6 +11,9 @@ import java.time.LocalDate;
 @Setter
 public class Project extends BaseEntity {
     private String projectName;
+    private Long clientId;
+    private Long expertId;
+
     @Enumerated(EnumType.STRING)
     private ProjectStatus status;
     private LocalDate startDate;

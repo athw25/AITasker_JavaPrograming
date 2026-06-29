@@ -1,3 +1,16 @@
+package com.aitasker.message.service;
+
+import com.aitasker.message.dto.ChatMessageRequest;
+import com.aitasker.message.entity.Message;
+import com.aitasker.message.repository.MessageRepository;
+import com.aitasker.security.ProjectSecurityService;
+import com.aitasker.user.entity.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class MessageService {

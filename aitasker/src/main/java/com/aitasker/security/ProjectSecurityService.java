@@ -1,3 +1,13 @@
+package com.aitasker.security;
+
+import com.aitasker.common.enums.Role;
+import com.aitasker.project.entity.Project;
+import com.aitasker.project.repository.ProjectRepository;
+import com.aitasker.user.entity.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+
 @Service
 @RequiredArgsConstructor
 public class ProjectSecurityService {
@@ -13,13 +23,12 @@ public class ProjectSecurityService {
         }
 
         if (hasRole(user, "CLIENT")
-                && project.getClient().getId().equals(user.getId())) {
+                && user.getId().equals(project.getClientId())) {
             return;
         }
 
-        if (hasRole(user, "EXPERT")
-                && project.getExpert() != null
-                && project.getExpert().getId().equals(user.getId())) {
+        if (hasRole(user, "AI_EXPERT")
+                && user.getId().equals(project.getExpertId())) {
             return;
         }
 
@@ -27,7 +36,6 @@ public class ProjectSecurityService {
     }
 
     private boolean hasRole(User user, String role) {
-        return user.getAuthorities().stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_" + role));
+        return Role.valueOf(role).equals(user.getRole());
     }
 }
