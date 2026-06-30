@@ -1,49 +1,41 @@
 package com.aitasker.expert.controller;
 
 import com.aitasker.common.response.ApiResponse;
-import com.aitasker.expert.dto.ExpertDto;
-import com.aitasker.expert.entity.ExpertProfile;
+import com.aitasker.expert.dto.request.UpdateExpertProfileRequest;
+import com.aitasker.expert.dto.response.ExpertProfileResponse;
 import com.aitasker.expert.service.ExpertService;
-import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
-/** Nơi tiếp nhận các yêu cầu API liên quan đến Chuyên gia AI từ giao diện Frontend.*/
+@RestController
+@RequestMapping("/api/experts")
+@Tag(name = "Expert Profile Module", description = "Quản lý thông tin hồ sơ cá nhân của Chuyên gia")
 public class ExpertController {
 
-    private final ExpertService expertService = new ExpertService();
+    private final ExpertService expertService;
 
-    /**
-     * API 1: Đăng ký hồ sơ chuyên gia
-     */
-    public ApiResponse<String> registerExpert(ExpertProfile profile) {
-        String result = expertService.createExpertProfile(profile);
-        
-        if (!"SUCCESS".equals(result)) {
-            // Trả về hộp lỗi chuẩn hóa
-            return ApiResponse.error(result);
-        }
-        
-        // Trả về hộp thành công chuẩn hóa
-        return ApiResponse.success("Đăng ký hồ sơ chuyên gia AI thành công!", null);
+    public ExpertController(ExpertService expertService) {
+        this.expertService = expertService;
     }
 
-    /**
-     * API 2: Xem chi tiết 1 chuyên gia trên Chợ (Marketplace)
-     */
-    public ApiResponse<ExpertDto> viewExpertDetail(Long id) {
-        ExpertDto expertDto = expertService.getExpertById(id);
-        
-        if (expertDto == null) {
-            return ApiResponse.error("Không tìm thấy thông tin chuyên gia AI này!");
-        }
-        
-        return ApiResponse.success("Lấy thông tin chuyên gia thành công!", expertDto);
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('EXPERT')")
+    @Operation(summary = "Lấy thông tin hồ sơ của Chuyên gia đang đăng nhập")
+    public ApiResponse<ExpertProfileResponse> getMyProfile() {
+        Long currentUserId = 1L; // Giả lập lấy từ Security Context
+        ExpertProfileResponse profile = expertService.getMyProfile(currentUserId);
+        return ApiResponse.success("Lấy thông tin hồ sơ chuyên gia thành công!", profile);
     }
 
-    /**
-     * API 3: Xem toàn bộ danh sách chuyên gia công khai
-     */
-    public ApiResponse<List<ExpertDto>> viewAllExperts() {
-        List<ExpertDto> experts = expertService.getAllExperts();
-        return ApiResponse.success("Tải danh sách chuyên gia thành công!", experts);
+    @PutMapping("/me")
+    @PreAuthorize("hasRole('EXPERT')")
+    @Operation(summary = "Cập nhật hồ sơ thông tin cá nhân của Chuyên gia")
+    public ApiResponse<ExpertProfileResponse> updateProfile(@Valid @RequestBody UpdateExpertProfileRequest request) {
+        Long currentUserId = 1L;
+        ExpertProfileResponse updated = expertService.updateProfile(currentUserId, request);
+        return ApiResponse.success("Cập nhật hồ sơ chuyên gia thành công!", updated);
     }
 }
