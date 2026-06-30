@@ -5,10 +5,14 @@ import com.aitasker.project.dto.request.UpdateProjectRequest;
 import com.aitasker.project.dto.response.ProjectDetailResponse;
 import com.aitasker.project.dto.response.ProjectResponse;
 import com.aitasker.proposal.entity.Proposal;
+import com.aitasker.project.entity.Project;
 import com.aitasker.user.entity.User;
 
 import java.util.List;
 
+/**
+ * Project lifecycle use cases.
+ */
 public interface ProjectService {
 
     ProjectResponse createProject(
@@ -39,10 +43,17 @@ public interface ProjectService {
             User currentUser
     );
 
-    /*
-     * Được Proposal System sử dụng.
+    /**
+     * Được Proposal System gọi khi Proposal được ACCEPT.
+     *
+     * Flow:
+     * Proposal ACCEPTED
+     *        ↓
+     * Create Project
+     *        ↓
+     * Job IN_PROGRESS
      */
-    void createProjectFromProposal(
+    Project createProjectFromProposal(
             Proposal proposal
     );
 }

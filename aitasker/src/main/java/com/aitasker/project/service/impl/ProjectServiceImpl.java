@@ -1,22 +1,31 @@
 package com.aitasker.project.service.impl;
 
 import com.aitasker.common.enums.ProjectStatus;
+import com.aitasker.common.enums.ProposalStatus;
+import com.aitasker.common.enums.Role;
+import com.aitasker.exception.BusinessException;
+import com.aitasker.exception.ForbiddenException;
 import com.aitasker.project.dto.request.CreateProjectRequest;
 import com.aitasker.project.dto.request.UpdateProjectRequest;
 import com.aitasker.project.dto.response.ProjectDetailResponse;
 import com.aitasker.project.dto.response.ProjectResponse;
 import com.aitasker.project.entity.Project;
+import com.aitasker.project.exception.InvalidProjectStateException;
+import com.aitasker.project.exception.ProjectNotFoundException;
+import com.aitasker.project.mapper.ProjectMapper;
 import com.aitasker.project.repository.ProjectRepository;
 import com.aitasker.project.service.ProjectService;
 import com.aitasker.proposal.entity.Proposal;
+import com.aitasker.proposal.repository.ProposalRepository;
 import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -24,15 +33,162 @@ import java.util.List;
 public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectRepository projectRepository;
+    private final ProposalRepository proposalRepository;
+    private final ProjectMapper projectMapper;
 
+    /**
+     * Tạo Project thủ công.
+     * Chỉ dùng trong trường hợp Admin hoặc mở rộng về sau.
+     */
     @Override
     public ProjectResponse createProject(
             CreateProjectRequest request,
             User currentUser
     ) {
-        throw new UnsupportedOperationException(
-                "Manual project creation not implemented yet."
-        );
+
+        Proposal proposal =
+                proposalRepository.findById(
+                                request.getProposalId()
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "Proposal not found."
+                                )
+                        );
+
+        if (proposal.getStatus() != ProposalStatus.ACCEPTED) {
+            throw new InvalidProjectStateException(
+                    "Only accepted proposal can create project."
+            );
+        }
+
+        if (!proposal.getJob()
+                .getClient()
+                .getId()
+                .equals(currentUser.getId())) {
+            throw new ForbiddenException(
+                    "Only job owner can create project."
+            );
+        }
+
+        if (projectRepository.existsByProposalId(
+                proposal.getId()
+        )) {
+            throw new InvalidProjectStateException(
+                    "Project already exists."
+            );
+        }
+
+        if (projectRepository.existsByJobId(
+                proposal.getJob().getId()
+        )) {
+            throw new InvalidProjectStateException(
+                    "This job already has a project."
+            );
+        }
+
+        if (request.getEndDate()
+                .isBefore(request.getStartDate())) {
+            throw new BusinessException(
+                    "End date cannot be before start date."
+            );
+        }
+
+        Project project =
+                Project.builder()
+                        .client(
+                                proposal.getJob().getClient()
+                        )
+                        .expert(
+                                proposal.getExpert()
+                        )
+                        .job(
+                                proposal.getJob()
+                        )
+                        .proposal(
+                                proposal
+                        )
+                        .startDate(
+                                request.getStartDate()
+                        )
+                        .endDate(
+                                request.getEndDate()
+                        )
+                        .status(
+                                ProjectStatus.ACTIVE
+                        )
+                        .build();
+
+        try {
+            project =
+                    projectRepository.saveAndFlush(
+                            project
+                    );
+
+            return projectMapper.toResponse(project);
+
+        } catch (DataIntegrityViolationException ex) {
+            throw new InvalidProjectStateException(
+                    "Proposal already has a project."
+            );
+        }
+    }
+
+    /**
+     * Được gọi tự động khi Proposal được ACCEPT.
+     */
+    public Project createProjectFromProposal(
+            Proposal proposal
+    ) {
+
+        if (proposal == null) {
+            throw new BusinessException(
+                    "Proposal cannot be null."
+            );
+        }
+
+        if (proposal.getStatus()
+                != ProposalStatus.ACCEPTED) {
+            throw new InvalidProjectStateException(
+                    "Proposal must be ACCEPTED."
+            );
+        }
+
+        if (projectRepository.existsByProposalId(
+                proposal.getId()
+        )) {
+            throw new InvalidProjectStateException(
+                    "Project already exists."
+            );
+        }
+
+        Project project =
+                Project.builder()
+                        .client(
+                                proposal.getJob().getClient()
+                        )
+                        .expert(
+                                proposal.getExpert()
+                        )
+                        .job(
+                                proposal.getJob()
+                        )
+                        .proposal(
+                                proposal
+                        )
+                        .startDate(
+                                LocalDate.now()
+                        )
+                        .endDate(
+                                proposal.getJob()
+                                        .getDeadline()
+                        )
+                        .status(
+                                ProjectStatus.ACTIVE
+                        )
+                        .build();
+
+        return projectRepository.save(project);
     }
 
     @Override
@@ -41,8 +197,16 @@ public class ProjectServiceImpl implements ProjectService {
             Long id,
             User currentUser
     ) {
-        throw new UnsupportedOperationException(
-                "Not implemented yet."
+
+        Project project = findProject(id);
+
+        assertParticipantOrAdmin(
+                project,
+                currentUser
+        );
+
+        return projectMapper.toDetailResponse(
+                project
         );
     }
 
@@ -51,7 +215,15 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> getMyProjects(
             User currentUser
     ) {
-        return Collections.emptyList();
+
+        return projectRepository
+                .findDistinctByClientIdOrExpertIdOrderByCreatedAtDesc(
+                        currentUser.getId(),
+                        currentUser.getId()
+                )
+                .stream()
+                .map(projectMapper::toResponse)
+                .toList();
     }
 
     @Override
@@ -59,7 +231,14 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> getClientProjects(
             User currentUser
     ) {
-        return Collections.emptyList();
+
+        return projectRepository
+                .findByClientId(
+                        currentUser.getId()
+                )
+                .stream()
+                .map(projectMapper::toResponse)
+                .toList();
     }
 
     @Override
@@ -67,7 +246,14 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> getExpertProjects(
             User currentUser
     ) {
-        return Collections.emptyList();
+
+        return projectRepository
+                .findByExpertId(
+                        currentUser.getId()
+                )
+                .stream()
+                .map(projectMapper::toResponse)
+                .toList();
     }
 
     @Override
@@ -76,61 +262,88 @@ public class ProjectServiceImpl implements ProjectService {
             UpdateProjectRequest request,
             User currentUser
     ) {
-        throw new UnsupportedOperationException(
-                "Not implemented yet."
-        );
-    }
 
-    /**
-     * Được gọi khi Proposal được ACCEPT.
-     */
-    @Override
-    public void createProjectFromProposal(
-            Proposal proposal
-    ) {
+        Project project =
+                findProject(id);
 
-        if (proposal == null) {
-            throw new IllegalArgumentException(
-                    "Proposal cannot be null."
+        if (currentUser.getRole()
+                != Role.ADMIN) {
+            throw new ForbiddenException(
+                    "Only admin can update project."
             );
         }
 
-        if (projectRepository.existsByProposalId(
-                proposal.getId()
-        )) {
-            return;
+        if (request.getStartDate() != null) {
+            project.setStartDate(
+                    request.getStartDate()
+            );
         }
 
-        Project project = new Project();
+        if (request.getEndDate() != null) {
+            project.setEndDate(
+                    request.getEndDate()
+            );
+        }
 
-        project.setClient(
-                proposal.getJob().getClient()
+        if (request.getStatus() != null) {
+            project.setStatus(
+                    request.getStatus()
+            );
+        }
+
+        if (project.getStartDate() != null
+                && project.getEndDate() != null
+                && project.getEndDate()
+                .isBefore(project.getStartDate())) {
+
+            throw new BusinessException(
+                    "End date cannot be before start date."
+            );
+        }
+
+        project =
+                projectRepository.save(project);
+
+        return projectMapper.toResponse(
+                project
         );
+    }
 
-        project.setExpert(
-                proposal.getExpert()
-        );
+    private Project findProject(
+            Long id
+    ) {
 
-        project.setJob(
-                proposal.getJob()
-        );
+        return projectRepository.findById(id)
+                .orElseThrow(() ->
+                        new ProjectNotFoundException(
+                                id
+                        )
+                );
+    }
 
-        project.setProposal(
-                proposal
-        );
+    private void assertParticipantOrAdmin(
+            Project project,
+            User user
+    ) {
 
-        project.setStartDate(
-                LocalDate.now()
-        );
+        boolean participant =
+                Objects.equals(
+                        project.getClient().getId(),
+                        user.getId()
+                )
+                        ||
+                        Objects.equals(
+                                project.getExpert().getId(),
+                                user.getId()
+                        );
 
-        project.setEndDate(
-                proposal.getJob().getDeadline()
-        );
+        if (!participant
+                && user.getRole()
+                != Role.ADMIN) {
 
-        project.setStatus(
-                ProjectStatus.ACTIVE
-        );
-
-        projectRepository.save(project);
+            throw new ForbiddenException(
+                    "You are not allowed to access this project."
+            );
+        }
     }
 }
