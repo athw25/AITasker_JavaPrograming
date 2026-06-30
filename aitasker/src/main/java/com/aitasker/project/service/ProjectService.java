@@ -1,52 +1,48 @@
-// ProjectService.java
 package com.aitasker.project.service;
 
-import com.aitasker.common.enums.ProjectStatus;
-import com.aitasker.project.entity.Project;
-import com.aitasker.project.repository.ProjectRepository;
+import com.aitasker.project.dto.request.CreateProjectRequest;
+import com.aitasker.project.dto.request.UpdateProjectRequest;
+import com.aitasker.project.dto.response.ProjectDetailResponse;
+import com.aitasker.project.dto.response.ProjectResponse;
 import com.aitasker.proposal.entity.Proposal;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.aitasker.user.entity.User;
 
-import java.time.LocalDate;
+import java.util.List;
 
-@Service
-@RequiredArgsConstructor
-public class ProjectService {
+public interface ProjectService {
 
-    private final ProjectRepository projectRepository;
+    ProjectResponse createProject(
+            CreateProjectRequest request,
+            User currentUser
+    );
 
-    @Transactional
-    public void createProjectFromProposal(Proposal proposal) {
-        Project project = new Project();
+    ProjectDetailResponse getProject(
+            Long id,
+            User currentUser
+    );
 
-        // 1. Lấy thông tin cơ bản từ Job
-        project.setProjectName(proposal.getJob().getTitle());
-        project.setDescription(proposal.getJob().getDescription());
+    List<ProjectResponse> getMyProjects(
+            User currentUser
+    );
 
-        // 2. Ép kiểu dữ liệu Giá thầu từ Double (Proposal) sang Integer (Project)
-        if (proposal.getBidAmount() != null) {
-            project.setTotalBudget(proposal.getBidAmount().intValue());
-        }
+    List<ProjectResponse> getClientProjects(
+            User currentUser
+    );
 
-        // 3. Phân bổ Client và Expert
-        project.setClient(proposal.getJob().getClient());
-        project.setExpert(proposal.getExpert());
+    List<ProjectResponse> getExpertProjects(
+            User currentUser
+    );
 
-        // 4. Thiết lập thời gian (Ngày bắt đầu là hôm nay)
-        project.setStartDate(LocalDate.now());
+    ProjectResponse updateProject(
+            Long id,
+            UpdateProjectRequest request,
+            User currentUser
+    );
 
-        // Lưu ý: Nếu JobPost của bạn có trường deadline (LocalDate), bạn có thể set nó cho endDate.
-        // Tạm thời ở đây chưa map endDate, hoặc bạn có thể gọi: project.setEndDate(proposal.getJob().getDeadline());
-
-        // 5. Thiết lập trạng thái dự án
-        // Chú ý: Đảm bảo file ProjectStatus.java của bạn có giá trị IN_PROGRESS nhé.
-        project.setStatus(ProjectStatus.IN_PROGRESS);
-
-        // 6. Lưu xuống Database
-        projectRepository.save(project);
-
-        System.out.println("🚀 [SUCCESS] Đã tạo và lưu Project thật vào Database từ Proposal ID: " + proposal.getId());
-    }
+    /*
+     * Được Proposal System sử dụng.
+     */
+    void createProjectFromProposal(
+            Proposal proposal
+    );
 }
