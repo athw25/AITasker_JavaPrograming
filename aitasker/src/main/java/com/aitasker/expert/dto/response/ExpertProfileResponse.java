@@ -1,6 +1,6 @@
-package com.aitasker.expert.dto;
+package com.aitasker.expert.dto.response;
 
-public class ExpertDto {
+public class ExpertProfileResponse {
     private Long id;
     private String fullName;
     private String title;
@@ -8,7 +8,7 @@ public class ExpertDto {
     private int experienceYears;
     private double hourlyRate;
 
-    public ExpertDto() {}
+    // Nhận xét của TL: Tuyệt đối không đem trường internalNotes vào đây!
 
     // Getters và Setters
     public Long getId() { return id; }

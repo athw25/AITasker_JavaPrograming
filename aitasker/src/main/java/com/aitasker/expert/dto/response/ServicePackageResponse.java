@@ -1,13 +1,11 @@
-package com.aitasker.expert.dto;
+package com.aitasker.expert.dto.response;
 
-public class ServicePackageDto {
+public class ServicePackageResponse {
     private Long id;
     private Long expertId;
     private String packageName;
     private double price;
     private int deliveryDays;
-
-    public ServicePackageDto() {}
 
     // Getters và Setters
     public Long getId() { return id; }
