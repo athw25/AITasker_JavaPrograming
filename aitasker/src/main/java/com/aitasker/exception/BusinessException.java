@@ -1,4 +1,5 @@
-package com.aitasker.exception;// BusinessException.java
+// BusinessException.java
+package com.aitasker.exception;
  public class BusinessException extends RuntimeException{
      public BusinessException(String message){
          super(message);
