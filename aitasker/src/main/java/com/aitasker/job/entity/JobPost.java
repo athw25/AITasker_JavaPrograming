@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -15,7 +16,7 @@ public class JobPost extends BaseEntity {
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
-    private Double budget;
+    private BigDecimal budget;
     private LocalDate deadline;
     private String requiredSkills;
     @Enumerated(EnumType.STRING)

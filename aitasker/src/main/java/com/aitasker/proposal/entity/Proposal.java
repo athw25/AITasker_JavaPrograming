@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -12,7 +13,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 public class Proposal extends BaseEntity {
-    private Double bidAmount;
+    private BigDecimal bidAmount;
     @Column(columnDefinition = "TEXT")
     private String coverLetter;
     private LocalDateTime submittedAt;
