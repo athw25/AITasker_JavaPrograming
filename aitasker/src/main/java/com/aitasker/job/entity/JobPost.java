@@ -13,6 +13,10 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class JobPost extends BaseEntity {
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    private User client;
+
     private String title;
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -21,9 +25,5 @@ public class JobPost extends BaseEntity {
     private String requiredSkills;
     @Enumerated(EnumType.STRING)
     private JobStatus status;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "Client_id")
-    private User client;
 
 }
