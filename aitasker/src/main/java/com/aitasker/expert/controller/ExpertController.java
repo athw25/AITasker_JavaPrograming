@@ -38,4 +38,16 @@ public class ExpertController {
         ExpertProfileResponse updated = expertService.updateProfile(currentUserId, request);
         return ApiResponse.success("Cập nhật hồ sơ chuyên gia thành công!", updated);
     }
+
+    @GetMapping("/search")
+    @io.swagger.v3.oas.annotations.Operation(summary = "Tìm kiếm nâng cao danh sách Chuyên gia theo Kỹ năng, Rating và Kinh nghiệm")
+    public com.aitasker.common.response.ApiResponse<java.util.List<com.aitasker.expert.dto.response.ExpertProfileResponse>> searchExperts(
+            @RequestParam(required = false) String skill,
+            @RequestParam(required = false) Double minRating,
+            @RequestParam(required = false) Integer minExperience) {
+        
+        java.util.List<com.aitasker.expert.dto.response.ExpertProfileResponse> results = 
+                expertService.searchExpertsAdvanced(skill, minRating, minExperience);
+        return com.aitasker.common.response.ApiResponse.success("Tìm kiếm danh sách chuyên gia thành công!", results);
+    }
 }

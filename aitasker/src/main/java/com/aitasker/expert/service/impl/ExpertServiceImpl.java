@@ -42,4 +42,16 @@ public class ExpertServiceImpl implements ExpertService {
         ExpertProfile savedProfile = expertRepository.save(profile);
         return expertMapper.toDto(savedProfile);
     }
+
+    @Override
+    public java.util.List<ExpertProfileResponse> searchExpertsAdvanced(String skill, Double minRating, Integer minExperience) {
+        org.springframework.data.jpa.domain.Specification<com.aitasker.expert.entity.ExpertProfile> spec = 
+                com.aitasker.expert.repository.ExpertSpecification.filterExperts(skill, minRating, minExperience);
+        
+        java.util.List<com.aitasker.expert.entity.ExpertProfile> experts = expertRepository.findAll(spec);
+        
+        return experts.stream()
+                .map(expertMapper::toDto) // Gọi qua expertMapper dùng chung của dự án thay vì this::convertToResponse
+                .collect(java.util.stream.Collectors.toList());
+    }
 }
