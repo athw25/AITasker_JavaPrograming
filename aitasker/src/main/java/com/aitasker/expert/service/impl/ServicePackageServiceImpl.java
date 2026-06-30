@@ -3,6 +3,7 @@ package com.aitasker.expert.service.impl;
 import com.aitasker.expert.dto.request.CreateServicePackageRequest;
 import com.aitasker.expert.dto.response.ServicePackageResponse;
 import com.aitasker.expert.entity.ServicePackage;
+import com.aitasker.expert.exception.ExpertNotFoundException;
 import com.aitasker.expert.repository.ServicePackageRepository;
 import com.aitasker.expert.service.ServicePackageService;
 import org.springframework.stereotype.Service;
@@ -54,7 +55,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         
         // Kiểm tra quyền sở hữu (Security Integration)
         if (!pack.getExpertId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
+            throw new ExpertNotFoundException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
         }
 
         pack.setPackageName(request.getPackageName());
@@ -72,7 +73,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         
         // Kiểm tra quyền sở hữu (Security Integration)
         if (!pack.getExpertId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền xóa gói dịch vụ của người khác!");
+            throw new ExpertNotFoundException("Bạn không có quyền xóa gói dịch vụ của người khác!");
         }
         packageRepository.deleteById(packageId);
     }

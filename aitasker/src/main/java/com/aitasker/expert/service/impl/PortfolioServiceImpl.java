@@ -3,6 +3,7 @@ package com.aitasker.expert.service.impl;
 import com.aitasker.expert.dto.request.CreatePortfolioRequest;
 import com.aitasker.expert.dto.response.PortfolioResponse;
 import com.aitasker.expert.entity.Portfolio;
+import com.aitasker.expert.exception.ExpertNotFoundException;
 import com.aitasker.expert.repository.PortfolioRepository;
 import com.aitasker.expert.service.PortfolioService;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,7 @@ public class PortfolioServiceImpl implements PortfolioService {
         
         // Kiểm tra quyền sở hữu: Chỉ chính expert tạo ra mới được quyền xóa portfolio đó
         if (!portfolio.getExpertId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền xóa hồ sơ năng lực của người khác!");
+            throw new ExpertNotFoundException("Bạn không có quyền xóa hồ sơ năng lực của người khác!");
         }
         portfolioRepository.deleteById(portfolioId);
     }
