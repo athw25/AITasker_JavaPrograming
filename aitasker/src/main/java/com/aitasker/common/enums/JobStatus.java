@@ -1,4 +1,5 @@
-package com.aitasker.common.enums;// JobStatus.java
+// JobStatus.java
+package com.aitasker.common.enums;
 
 public enum JobStatus {
     OPEN,
