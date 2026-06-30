@@ -8,7 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.aitasker.exception.BadRequestException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.milestone.entity.Milestone;
-import com.aitasker.milestone.entity.MilestoneRepository;
+import com.aitasker.milestone.repository.MilestoneRepository;
 import com.aitasker.payment.dto.DepositRequest;
 import com.aitasker.payment.dto.ReleaseRequest;
 import com.aitasker.payment.entity.Payment;
@@ -18,7 +18,7 @@ import com.aitasker.payment.enums.TransactionType;
 import com.aitasker.payment.repository.PaymentRepository;
 import com.aitasker.payment.repository.TransactionRepository;
 import com.aitasker.project.entity.Project;
-import com.aitasker.project.entity.ProjectRepository;
+import com.aitasker.project.repository.ProjectRepository;
 
 import lombok.RequiredArgsConstructor;
 

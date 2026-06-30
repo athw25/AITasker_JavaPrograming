@@ -5,6 +5,7 @@ import com.aitasker.common.enums.ProposalStatus;
 import com.aitasker.common.enums.Role;
 import com.aitasker.exception.BusinessException;
 import com.aitasker.exception.ForbiddenException;
+import com.aitasker.job.entity.JobPost;
 import com.aitasker.project.dto.request.CreateProjectRequest;
 import com.aitasker.project.dto.request.UpdateProjectRequest;
 import com.aitasker.project.dto.response.ProjectDetailResponse;
@@ -26,6 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import com.aitasker.*;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Service
 @RequiredArgsConstructor
@@ -62,16 +67,14 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        if (!proposal.getJob()
-                .getClient()
-                .getId()
+        if (!getJobClientId(proposal)
                 .equals(currentUser.getId())) {
             throw new ForbiddenException(
                     "Only job owner can create project."
             );
         }
 
-        if (projectRepository.existsByProposalId(
+        if (projectRepository.existsByProposal_Id(
                 proposal.getId()
         )) {
             throw new InvalidProjectStateException(
@@ -79,8 +82,8 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        if (projectRepository.existsByJobId(
-                proposal.getJob().getId()
+        if (projectRepository.existsByJob_Id(
+                getJobId(proposal)
         )) {
             throw new InvalidProjectStateException(
                     "This job already has a project."
@@ -97,13 +100,13 @@ public class ProjectServiceImpl implements ProjectService {
         Project project =
                 Project.builder()
                         .client(
-                                proposal.getJob().getClient()
+                                getJobClient(proposal)
                         )
                         .expert(
-                                proposal.getExpert()
+                                getProposalExpert(proposal)
                         )
                         .job(
-                                proposal.getJob()
+                                em.find(JobPost.class, getJobId(proposal))
                         )
                         .proposal(
                                 proposal
@@ -154,7 +157,7 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
 
-        if (projectRepository.existsByProposalId(
+        if (projectRepository.existsByProposal_Id(
                 proposal.getId()
         )) {
             throw new InvalidProjectStateException(
@@ -165,13 +168,13 @@ public class ProjectServiceImpl implements ProjectService {
         Project project =
                 Project.builder()
                         .client(
-                                proposal.getJob().getClient()
+                                getJobClient(proposal)
                         )
                         .expert(
-                                proposal.getExpert()
+                                getProposalExpert(proposal)
                         )
                         .job(
-                                proposal.getJob()
+                                em.find(JobPost.class, getJobId(proposal))
                         )
                         .proposal(
                                 proposal
@@ -180,8 +183,7 @@ public class ProjectServiceImpl implements ProjectService {
                                 LocalDate.now()
                         )
                         .endDate(
-                                proposal.getJob()
-                                        .getDeadline()
+                                getJobDeadline(proposal)
                         )
                         .status(
                                 ProjectStatus.ACTIVE
@@ -217,7 +219,7 @@ public class ProjectServiceImpl implements ProjectService {
     ) {
 
         return projectRepository
-                .findDistinctByClientIdOrExpertIdOrderByCreatedAtDesc(
+                .findDistinctByClient_IdOrExpert_IdOrderByCreatedAtDesc(
                         currentUser.getId(),
                         currentUser.getId()
                 )
@@ -233,7 +235,7 @@ public class ProjectServiceImpl implements ProjectService {
     ) {
 
         return projectRepository
-                .findByClientId(
+                .findByClient_Id(
                         currentUser.getId()
                 )
                 .stream()
@@ -248,7 +250,7 @@ public class ProjectServiceImpl implements ProjectService {
     ) {
 
         return projectRepository
-                .findByExpertId(
+                .findByExpert_Id(
                         currentUser.getId()
                 )
                 .stream()
@@ -346,4 +348,73 @@ public class ProjectServiceImpl implements ProjectService {
             );
         }
     }
+
+    private Long getJobClientId(
+            Proposal proposal
+    ) {
+
+                Long jobId = getJobId(proposal);
+                JobPost job = em.find(JobPost.class, jobId);
+                return job.getClient().getId();
+    }
+
+    private User getProposalExpert(
+            Proposal proposal
+    ) {
+
+        Object res = em.createNativeQuery("SELECT expert_id FROM proposals WHERE id = :pid")
+                        .setParameter("pid", proposal.getId())
+                        .getSingleResult();
+
+        Long expertId;
+        if (res instanceof Number) {
+            expertId = ((Number) res).longValue();
+        } else {
+            expertId = Long.valueOf(res.toString());
+        }
+
+        User expert = em.find(User.class, expertId);
+        if (expert == null) {
+            throw new BusinessException(
+                    "Proposal expert cannot be null."
+            );
+        }
+
+        return expert;
+    }
+
+    private User getJobClient(
+            Proposal proposal
+    ) {
+
+                Long jobId = getJobId(proposal);
+                return em.find(JobPost.class, jobId).getClient();
+    }
+
+    private Long getJobId(
+            Proposal proposal
+    ) {
+
+                // load job_id from proposals table using native query
+                Object res = em.createNativeQuery("SELECT job_id FROM proposals WHERE id = :pid")
+                                .setParameter("pid", proposal.getId())
+                                .getSingleResult();
+
+                if (res instanceof Number) {
+                        return ((Number) res).longValue();
+                }
+
+                return Long.valueOf(res.toString());
+    }
+
+    private LocalDate getJobDeadline(
+            Proposal proposal
+    ) {
+
+                Long jobId = getJobId(proposal);
+                return em.find(JobPost.class, jobId).getDeadline();
+    }
+
+        @PersistenceContext
+        private EntityManager em;
 }

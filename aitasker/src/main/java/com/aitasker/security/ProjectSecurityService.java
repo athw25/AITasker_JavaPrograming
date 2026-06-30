@@ -23,12 +23,12 @@ public class ProjectSecurityService {
         }
 
         if (hasRole(user, "CLIENT")
-                && user.getId().equals(project.getClientId())) {
+                && user.getId().equals(project.getClient().getId() )) {
             return;
         }
 
         if (hasRole(user, "AI_EXPERT")
-                && user.getId().equals(project.getExpertId())) {
+                && user.getId().equals(project.getExpert(). getId())) {
             return;
         }
 

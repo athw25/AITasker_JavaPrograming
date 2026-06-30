@@ -3,6 +3,7 @@ package com.aitasker.proposal.entity;
 import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.common.enums.ProposalStatus;
 import com.aitasker.job.entity.JobPost;
+import com.aitasker.project.entity.Project;
 import com.aitasker.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -34,8 +35,48 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Proposal extends BaseEntity {
+
+    /**
+     * Job mà Expert đang ứng tuyển.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "job_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_proposal_job")
+    )
+    private JobPost job;
+
+    /**
+     * Expert gửi Proposal.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "expert_id",
+            nullable = false,
+            foreignKey = @ForeignKey(name = "fk_proposal_expert")
+    )
+    private User expert;
+
+    /**
+     * Giá Expert đề xuất.
+     */
+    @Column(nullable = false, precision = 18, scale = 2)
     private BigDecimal bidAmount;
-    @Column(columnDefinition = "TEXT")
+
+    /**
+     * Thời gian hoàn thành dự kiến (ngày).
+     */
+    @Column(nullable = false)
+    private Integer duration;
+
+    /**
+     * Thư giới thiệu.
+     */
+    @Column(
+            nullable = false,
+            columnDefinition = "TEXT"
+    )
     private String coverLetter;
 
     /**
@@ -48,11 +89,24 @@ public class Proposal extends BaseEntity {
      * Trạng thái Proposal.
      */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(
+            nullable = false,
+            length = 20
+    )
     private ProposalStatus status;
 
     /**
-     * Tự động set dữ liệu khi persist.
+     * Project được tạo sau khi Proposal được chấp nhận.
+     * Một Proposal chỉ sinh ra tối đa một Project.
+     */
+    @OneToOne(
+            mappedBy = "proposal",
+            fetch = FetchType.LAZY
+    )
+    private Project project;
+
+    /**
+     * Tự động gán giá trị mặc định khi persist.
      */
     @PrePersist
     public void prePersist() {
@@ -64,5 +118,49 @@ public class Proposal extends BaseEntity {
         if (status == null) {
             status = ProposalStatus.PENDING;
         }
+
     }
+
+    /**
+     * Kiểm tra Proposal đã được chấp nhận.
+     */
+    public boolean isAccepted() {
+        return ProposalStatus.ACCEPTED.equals(status);
+    }
+
+    /**
+     * Kiểm tra Proposal còn chờ duyệt.
+     */
+    public boolean isPending() {
+        return ProposalStatus.PENDING.equals(status);
+    }
+
+    /**
+     * Kiểm tra Proposal đã bị từ chối.
+     */
+    public boolean isRejected() {
+        return ProposalStatus.REJECTED.equals(status);
+    }
+
+    /**
+     * Kiểm tra Proposal đã bị rút.
+     */
+    public boolean isWithdrawn() {
+        return ProposalStatus.WITHDRAWN.equals(status);
+    }
+
+    /**
+     * Có thể chỉnh sửa Proposal khi còn Pending.
+     */
+    public boolean canEdit() {
+        return isPending();
+    }
+
+    /**
+     * Có thể rút Proposal khi còn Pending.
+     */
+    public boolean canWithdraw() {
+        return isPending();
+    }
+
 }

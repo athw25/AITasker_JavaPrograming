@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -29,7 +30,7 @@ public class JobService{
         JobPost job = new JobPost();
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
-        job.setBudget(request.getBudget());
+        job.setBudget(request.getBudget() != null ? BigDecimal.valueOf(request.getBudget()) : null);
         job.setDeadline(request.getDeadline());
         job.setRequiredSkills(request.getRequiredSkills());
         job.setStatus(JobStatus.OPEN);
@@ -49,7 +50,7 @@ public class JobService{
         }
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
-        job.setBudget(request.getBudget());
+        job.setBudget(request.getBudget() != null ? BigDecimal.valueOf(request.getBudget()) : null);
         job.setDeadline(request.getDeadline());
         job.setRequiredSkills(request.getRequiredSkills());
 
@@ -75,7 +76,7 @@ public class JobService{
         res.setId(job.getId());
         res.setTitle(job.getTitle());
         res.setDescription(job.getDescription());
-        res.setBudget(job.getBudget());
+        res.setBudget(job.getBudget() != null ? job.getBudget().doubleValue() : null);
         res.setDeadline(job.getDeadline());
         res.setRequiredSkills(job.getRequiredSkills());
         res.setStatus(job.getStatus());

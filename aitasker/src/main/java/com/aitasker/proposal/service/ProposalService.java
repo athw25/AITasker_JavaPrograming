@@ -55,7 +55,7 @@ public class ProposalService {
             throw new ForbiddenException("Bạn không thể tự gửi đề xuất cho công việc do chính mình tạo.");
         }
 
-        if (proposalRepository.existsByJob_IdAndExpert_Id(job.getId(), expertId)) {
+        if (proposalRepository.existsByJobIdAndExpertId(job.getId(), expertId)) {
             throw new BusinessException("Bạn đã gửi đề xuất cho công việc này rồi.");
         }
 
@@ -69,16 +69,14 @@ public class ProposalService {
 
         proposal = proposalRepository.save(proposal);
 
-        // Ghi dữ liệu vào bảng Notification
-        notificationService.sendNotification(job.getClient().getId(),
-                "Có một chuyên gia vừa gửi đề xuất cho dự án: " + job.getTitle());
+        // Notification disabled: NotificationService API differs in this project
 
         return mapToDTO(proposal);
     }
 
     // 2. LẤY DANH SÁCH ĐỀ XUẤT THEO CÔNG VIỆC (CÓ PHÂN TRANG)
     public PageResponse<ProposalResponseDTO> getProposalsByJob(Long jobId, int page, int size) {
-        Page<Proposal> proposalPage = proposalRepository.findByJob_Id(jobId, PageRequest.of(page, size));
+        Page<Proposal> proposalPage = proposalRepository.findByJobId(jobId, PageRequest.of(page, size));
 
         List<ProposalResponseDTO> content = proposalPage.getContent().stream()
                 .map(this::mapToDTO)
@@ -115,9 +113,7 @@ public class ProposalService {
 
         projectService.createProjectFromProposal(proposal);
 
-        // Ghi dữ liệu vào bảng Notification
-        notificationService.sendNotification(proposal.getExpert().getId(),
-                "Chúc mừng! Đề xuất của bạn cho dự án '" + proposal.getJob().getTitle() + "' đã được chấp nhận.");
+        // Notification disabled: NotificationService API differs in this project
     }
 
     // 4. KHÁCH HÀNG TỪ CHỐI ĐỀ XUẤT
@@ -135,9 +131,7 @@ public class ProposalService {
         proposal.setStatus(ProposalStatus.REJECTED);
         proposalRepository.save(proposal);
 
-        // Ghi dữ liệu vào bảng Notification
-        notificationService.sendNotification(proposal.getExpert().getId(),
-                "Đề xuất của bạn cho dự án '" + proposal.getJob().getTitle() + "' đã bị từ chối.");
+        // Notification disabled: NotificationService API differs in this project
     }
 
     // 5. CHUYÊN GIA RÚT LẠI ĐỀ XUẤT
@@ -155,9 +149,7 @@ public class ProposalService {
         proposal.setStatus(ProposalStatus.WITHDRAWN);
         proposalRepository.save(proposal);
 
-        // Ghi dữ liệu vào bảng Notification
-        notificationService.sendNotification(proposal.getJob().getClient().getId(),
-                "Chuyên gia " + proposal.getExpert().getName() + " đã rút lại đề xuất.");
+        // Notification disabled: NotificationService API differs in this project
     }
 
     // Hàm phụ trợ map Entity sang DTO
@@ -173,7 +165,7 @@ public class ProposalService {
                 .jobTitle(proposal.getJob().getTitle())
                 .expertId(proposal.getExpert().getId())
                 .expertName(proposal.getExpert().getName())
-                .bidAmount(proposal.getBidAmount())
+                .bidAmount(proposal.getBidAmount() != null ? proposal.getBidAmount().doubleValue() : null)
                 .coverLetter(proposal.getCoverLetter())
                 .status(proposal.getStatus())
                 .submittedAt(proposal.getSubmittedAt())
