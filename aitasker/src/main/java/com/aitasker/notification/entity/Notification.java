@@ -1,11 +1,9 @@
-// Notification.java
 package com.aitasker.notification.entity;
 
 import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.user.entity.User;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -13,16 +11,28 @@ import java.time.LocalDateTime;
 @Table(name = "notifications")
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Notification extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "recipient_id", nullable = false)
+    private User recipient;
 
-    @Column(nullable = false, columnDefinition = "NVARCHAR(255)")
-    private String message;
+    @Column(nullable = false, length = 255)
+    private String title;
 
-    private boolean isRead = false;
+    @Column(columnDefinition = "TEXT")
+    private String content;
 
+    @Column(nullable = false, length = 50)
+    private String type;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean read = false;
+
+    @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 }

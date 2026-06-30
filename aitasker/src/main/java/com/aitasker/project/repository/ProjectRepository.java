@@ -6,96 +6,109 @@ import com.aitasker.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
+@Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     /**
-     * Lấy tất cả project của Client.
+     * Lấy tất cả Project của Client.
      */
-    List<Project> findByClientId(Long clientId);
+    List<Project> findByClient_Id(Long clientId);
 
     /**
-     * Lấy tất cả project của Expert.
+     * Lấy tất cả Project của Expert.
      */
-    List<Project> findByExpertId(Long expertId);
-
-    /** Returns every project in which the user is a participant. */
-    List<Project> findDistinctByClientIdOrExpertIdOrderByCreatedAtDesc(Long clientId, Long expertId);
+    List<Project> findByExpert_Id(Long expertId);
 
     /**
-     * Phân trang project của Client.
+     * Lấy tất cả Project mà User tham gia.
      */
-    Page<Project> findByClientId(Long clientId, Pageable pageable);
+    List<Project> findDistinctByClient_IdOrExpert_IdOrderByCreatedAtDesc(
+            Long clientId,
+            Long expertId
+    );
 
     /**
-     * Phân trang project của Expert.
+     * Phân trang Project của Client.
      */
-    Page<Project> findByExpertId(Long expertId, Pageable pageable);
+    Page<Project> findByClient_Id(
+            Long clientId,
+            Pageable pageable
+    );
 
     /**
-     * Lấy project theo proposal.
+     * Phân trang Project của Expert.
      */
-    Optional<Project> findByProposalId(Long proposalId);
+    Page<Project> findByExpert_Id(
+            Long expertId,
+            Pageable pageable
+    );
 
     /**
-     * Lấy project theo job.
+     * Tìm Project theo Proposal.
      */
-    Optional<Project> findByJobId(Long jobId);
+    Optional<Project> findByProposal_Id(Long proposalId);
 
     /**
-     * Kiểm tra project tồn tại theo proposal.
+     * Tìm Project theo Job.
      */
-    boolean existsByProposalId(Long proposalId);
+    Optional<Project> findByJob_Id(Long jobId);
 
     /**
-     * Kiểm tra project tồn tại theo job.
+     * Kiểm tra Project đã tồn tại theo Proposal chưa.
      */
-    boolean existsByJobId(Long jobId);
+    boolean existsByProposal_Id(Long proposalId);
 
     /**
-     * Lấy project theo trạng thái.
+     * Kiểm tra Project đã tồn tại theo Job chưa.
+     */
+    boolean existsByJob_Id(Long jobId);
+
+    /**
+     * Lấy Project theo trạng thái.
      */
     List<Project> findByStatus(ProjectStatus status);
 
     /**
-     * Lấy project của Client theo trạng thái.
+     * Lấy Project của Client theo trạng thái.
      */
-    List<Project> findByClientIdAndStatus(
+    List<Project> findByClient_IdAndStatus(
             Long clientId,
             ProjectStatus status
     );
 
     /**
-     * Lấy project của Expert theo trạng thái.
+     * Lấy Project của Expert theo trạng thái.
      */
-    List<Project> findByExpertIdAndStatus(
+    List<Project> findByExpert_IdAndStatus(
             Long expertId,
             ProjectStatus status
     );
 
     /**
-     * Đếm số project của Expert.
+     * Đếm tổng Project của Expert.
      */
-    long countByExpertId(Long expertId);
+    long countByExpert_Id(Long expertId);
 
     /**
-     * Đếm số project hoàn thành của Expert.
+     * Đếm Project của Expert theo trạng thái.
      */
-    long countByExpertIdAndStatus(
+    long countByExpert_IdAndStatus(
             Long expertId,
             ProjectStatus status
     );
 
     /**
-     * Đếm số project của Client.
+     * Đếm tổng Project của Client.
      */
-    long countByClientId(Long clientId);
+    long countByClient_Id(Long clientId);
 
     /**
-     * Tìm project giữa Client và Expert.
+     * Tìm Project giữa Client và Expert.
      */
     List<Project> findByClientAndExpert(
             User client,

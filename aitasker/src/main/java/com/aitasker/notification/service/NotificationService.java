@@ -1,4 +1,3 @@
-// NotificationService.java
 package com.aitasker.notification.service;
 
 import com.aitasker.notification.entity.Notification;
@@ -6,8 +5,13 @@ import com.aitasker.notification.repository.NotificationRepository;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -15,18 +19,69 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
-    public void sendNotification(Long userId, String message) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User không tồn tại để gửi thông báo"));
+    public Notification createNotification(
+            Long recipientId,
+            String title,
+            String content,
+            String type
+    ) {
 
-        Notification notification = new Notification();
-        notification.setUser(user);
-        notification.setMessage(message);
+        User recipient = userRepository.findById(recipientId)
+                .orElseThrow(() ->
+                        new RuntimeException("Recipient not found"));
 
-        // Lưu thẳng xuống SQL Server
-        notificationRepository.save(notification);
-        System.out.println("✅ Đã lưu thông báo vào Database cho User ID: " + userId);
+        Notification notification = Notification.builder()
+                .recipient(recipient)
+                .title(title)
+                .content(content)
+                .type(type)
+                .read(false)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        Notification saved = notificationRepository.save(notification);
+
+        /*
+         * Gửi realtime
+         * Nên dùng Principal.getName()
+         * Nếu username=email thì thay bằng:
+         * recipient.getEmail()
+         */
+        messagingTemplate.convertAndSendToUser(
+                recipient.getEmail(),          // hoặc Principal Name
+                "/queue/notifications",
+                saved
+        );
+
+        return saved;
     }
+
+    public List<Notification> getMyNotifications(User user) {
+
+        return notificationRepository
+                .findByRecipientOrderByCreatedAtDesc(user);
+    }
+
+    @Transactional
+    public Notification markAsRead(Long id, User user) {
+
+        Notification notification =
+                notificationRepository.findById(id)
+                        .orElseThrow(() ->
+                                new RuntimeException("Notification not found"));
+
+        if (!notification.getRecipient().getId().equals(user.getId())) {
+
+            throw new AccessDeniedException(
+                    "You cannot access this notification");
+        }
+
+        notification.setRead(true);
+
+        return notificationRepository.save(notification);
+    }
+
 }
