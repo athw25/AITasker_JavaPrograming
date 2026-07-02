@@ -114,4 +114,5 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             User client,
             User expert
     );
+    long countByStatus(ProjectStatus status);
 }
