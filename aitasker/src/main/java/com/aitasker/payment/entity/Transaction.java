@@ -21,7 +21,7 @@ public class Transaction {
 
     // Mỗi Transaction thuộc về một Payment
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "payment_id", nullable = false)
+    @JoinColumn(name = "payment_id", nullable = true)
     private Payment payment;
 
     @Enumerated(EnumType.STRING)
