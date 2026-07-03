@@ -3,15 +3,14 @@ spring:
     name: aitasker
 
   datasource:
-  #  Thay đổi cấu hình kết nối theo môi trường của bạn, lưu ý tạo database AITasker trước khi chạy ứng dụng
-    url: jdbc:sqlserver://localhost:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true 
+    url: jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true
     username: sa
-    password: Aa123456 # Thay đổi mật khẩu này theo cấu hình của bạn 
+    password: Aa123456 #tự đổi theo pass SQL Server của mọi người
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true
 
     properties:

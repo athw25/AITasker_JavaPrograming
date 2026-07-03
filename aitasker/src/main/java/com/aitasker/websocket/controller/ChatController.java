@@ -1,4 +1,4 @@
-package com.aitasker.websocket.controller;
+/*package com.aitasker.websocket.controller;
 
 import com.aitasker.websocket.dto.ChatMessage;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,4 +16,4 @@ public class ChatController {
 
         return message;
     }
-}
+}*/

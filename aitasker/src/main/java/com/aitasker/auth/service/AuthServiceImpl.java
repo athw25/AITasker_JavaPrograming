@@ -4,6 +4,7 @@ import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
 import com.aitasker.auth.dto.RegisterRequest;
 import com.aitasker.common.enums.Role;
+import com.aitasker.expert.repository.ExpertProfileRepository;
 import com.aitasker.security.jwt.JwtService;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
@@ -18,6 +19,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final ExpertProfileRepository expertProfileRepository;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -37,6 +39,13 @@ public class AuthServiceImpl implements AuthService {
         }
 
         userRepository.save(user);
+
+        if (user.getRole() == Role.EXPERT) {
+            com.aitasker.expert.entity.ExpertProfile profile = new com.aitasker.expert.entity.ExpertProfile();
+            profile.setUser(user);
+            profile.setFullName(request.getFullName());
+            expertProfileRepository.save(profile);
+        }
 
         return AuthResponse.builder()
                 .message("Đăng ký thành công! Vui lòng đăng nhập.")
