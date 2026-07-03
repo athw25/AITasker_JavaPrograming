@@ -1,6 +1,7 @@
 package com.aitasker.review.service;
 
 import com.aitasker.common.enums.ProjectStatus;
+import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.project.entity.Project;
 import com.aitasker.project.repository.ProjectRepository;
 import com.aitasker.review.dto.ReviewRequest;
@@ -36,13 +37,13 @@ public class ReviewService {
         User reviewer = userRepository
                 .findByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("User not found.")
+                        new ResourceNotFoundException("Không tìm thấy người dùng")
                 );
 
         Project project = projectRepository
                 .findById(request.getProjectId())
                 .orElseThrow(() ->
-                        new RuntimeException("Project not found.")
+                        new ResourceNotFoundException("Không tìm thấy Project")
                 );
 
         /*
@@ -50,8 +51,8 @@ public class ReviewService {
          * Project phải COMPLETED.
          */
         if (project.getStatus() != ProjectStatus.COMPLETED) {
-            throw new RuntimeException(
-                    "Reviews can only be created after project completion."
+            throw new com.aitasker.exception.BadRequestException(
+                    "Chỉ có thể review khi Project đã hoàn thành"
             );
         }
 
@@ -64,8 +65,8 @@ public class ReviewService {
                         || project.getExpert().getId().equals(reviewer.getId());
 
         if (!isParticipant) {
-            throw new RuntimeException(
-                    "Only project participants can leave a review."
+            throw new com.aitasker.exception.ForbiddenException(
+                    "Chỉ người tham gia Project mới được review"
             );
         }
 
@@ -80,15 +81,15 @@ public class ReviewService {
                 );
 
         if (alreadyReviewed) {
-            throw new RuntimeException(
-                    "You have already reviewed this project."
+            throw new com.aitasker.exception.BusinessException(
+                    "Bạn đã review Project này rồi"
             );
         }
 
         User reviewee = userRepository
                 .findById(request.getRevieweeId())
                 .orElseThrow(() ->
-                        new RuntimeException("Reviewee not found.")
+                        new ResourceNotFoundException("Không tìm thấy Reviewee")
                 );
 
         /*
@@ -96,8 +97,8 @@ public class ReviewService {
          * Không được tự review chính mình.
          */
         if (reviewee.getId().equals(reviewer.getId())) {
-            throw new RuntimeException(
-                    "You cannot review yourself."
+            throw new com.aitasker.exception.ForbiddenException(
+                    "Không thể tự review chính mình"
             );
         }
 
@@ -110,8 +111,8 @@ public class ReviewService {
                         || project.getExpert().getId().equals(reviewee.getId());
 
         if (!validReviewee) {
-            throw new RuntimeException(
-                    "Reviewee is not a participant of this project."
+            throw new com.aitasker.exception.ForbiddenException(
+                    "Reviewee không phải thành viên của Project này"
             );
         }
 
@@ -123,7 +124,6 @@ public class ReviewService {
         review.setRating(request.getRating());
         review.setComment(request.getComment());
         review.setType(request.getType());
-        review.setCreatedAt(LocalDateTime.now());
 
         review = reviewRepository.save(review);
 

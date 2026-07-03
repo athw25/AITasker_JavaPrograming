@@ -55,7 +55,7 @@ public class MilestoneController {
     }
 
     @PutMapping("/{id}/submit")
-    @PreAuthorize("hasRole('AI_EXPERT')")
+    @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Submit a delivery version for a milestone")
     public ApiResponse<MilestoneResponse> submit(@PathVariable Long id,
             @Valid @RequestBody SubmitMilestoneRequest request,

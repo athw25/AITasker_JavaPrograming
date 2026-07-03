@@ -66,7 +66,7 @@ public class ProjectController {
     }
 
     @GetMapping("/expert")
-    @PreAuthorize("hasRole('AI_EXPERT')")
+    @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Get projects assigned to the current expert")
     public ApiResponse<List<ProjectResponse>> expert(@AuthenticationPrincipal CustomUserDetails principal) {
         return ApiResponse.success("Expert projects retrieved successfully",

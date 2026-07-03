@@ -7,7 +7,9 @@ import com.aitasker.proposal.dto.response.ProposalResponseDTO;
 import com.aitasker.proposal.service.ProposalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.aitasker.security.userdetails.CustomUserDetails;
 
 @RestController
 @RequestMapping("/api/proposals")
@@ -16,11 +18,17 @@ public class ProposalController {
 
     private final ProposalService proposalService;
 
+    private Long getCurrentUserId(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return userDetails.getUser().getId();
+    }
+
     // API 1: Nộp đề xuất mới
     @PostMapping
     public ApiResponse<ProposalResponseDTO> createProposal(
             @Valid @RequestBody ProposalRequestDTO request,
-            @RequestParam Long expertId) {
+            Authentication authentication) {
+        Long expertId = getCurrentUserId(authentication);
         ProposalResponseDTO response = proposalService.createProposal(request, expertId);
         return ApiResponse.success("Nộp đề xuất thành công", response);
     }
@@ -39,7 +47,8 @@ public class ProposalController {
     @PutMapping("/{id}/accept")
     public ApiResponse<String> acceptProposal(
             @PathVariable Long id,
-            @RequestParam Long clientId) {
+            Authentication authentication) {
+        Long clientId = getCurrentUserId(authentication);
         proposalService.acceptProposal(id, clientId);
         return ApiResponse.success("Chấp nhận đề xuất thành công", null);
     }
@@ -48,7 +57,8 @@ public class ProposalController {
     @PutMapping("/{id}/reject")
     public ApiResponse<String> rejectProposal(
             @PathVariable Long id,
-            @RequestParam Long clientId) {
+            Authentication authentication) {
+        Long clientId = getCurrentUserId(authentication);
         proposalService.rejectProposal(id, clientId);
         return ApiResponse.success("Từ chối đề xuất thành công", null);
     }
@@ -57,7 +67,8 @@ public class ProposalController {
     @PutMapping("/{id}/withdraw")
     public ApiResponse<String> withdrawProposal(
             @PathVariable Long id,
-            @RequestParam Long expertId) {
+            Authentication authentication) {
+        Long expertId = getCurrentUserId(authentication);
         proposalService.withdrawProposal(id, expertId);
         return ApiResponse.success("Rút đề xuất thành công", null);
     }

@@ -64,6 +64,7 @@ public class ProposalService {
         proposal.setExpert(expert);
         proposal.setBidAmount(request.getBidAmount());
         proposal.setCoverLetter(request.getCoverLetter());
+        proposal.setDuration(request.getDuration());
         proposal.setStatus(ProposalStatus.PENDING);
         proposal.setSubmittedAt(LocalDateTime.now());
 
