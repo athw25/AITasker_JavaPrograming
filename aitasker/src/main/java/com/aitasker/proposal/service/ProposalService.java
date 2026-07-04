@@ -22,7 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.aitasker.recommendation.service.RecommendationService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -126,6 +126,8 @@ public class ProposalService {
 
         projectService.createProjectFromProposal(proposal);
 
+        // 3. THÊM DÒNG NÀY ĐỂ KÍCH HOẠT FEEDBACK GIAI ĐOẠN 5
+        recommendationService.markAsAccepted(proposal.getJob().getId(), proposal.getExpert().getId());
         // Thông báo cho Expert biết đề xuất của họ đã được chấp nhận
         notificationService.createNotification(
                 proposal.getExpert().getId(),
@@ -202,4 +204,6 @@ public class ProposalService {
                 .submittedAt(proposal.getSubmittedAt())
                 .build();
     }
+    private final RecommendationService recommendationService;
+
 }
