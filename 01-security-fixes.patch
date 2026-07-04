@@ -1,0 +1,534 @@
+diff --git a/aitasker/.env.example b/aitasker/.env.example
+new file mode 100644
+index 0000000..ff52f1e
+--- /dev/null
++++ b/aitasker/.env.example
+@@ -0,0 +1,17 @@
++# Copy file này thành .env (đã có trong .gitignore) và điền giá trị thật.
++# KHÔNG commit file .env vào git.
++
++DB_URL=jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true
++DB_USERNAME=sa
++DB_PASSWORD=your_sql_server_password
++
++# Sinh secret mới, tối thiểu 32 ký tự, KHÔNG dùng lại secret cũ đã từng
++# bị commit vào git (secret đó coi như đã lộ, phải thay secret khác).
++JWT_SECRET=replace_with_a_new_random_secret_at_least_32_chars
++JWT_EXPIRATION_MS=86400000
++
++# Danh sách origin được phép gọi API / kết nối WebSocket, phân tách bởi dấu phẩy
++CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
++
++JPA_DDL_AUTO=update
++JPA_SHOW_SQL=false
+diff --git a/aitasker/src/main/java/com/aitasker/admin/controller/AdminUserController.java b/aitasker/src/main/java/com/aitasker/admin/controller/AdminUserController.java
+index e5d0bb8..ebbcc7e 100644
+--- a/aitasker/src/main/java/com/aitasker/admin/controller/AdminUserController.java
++++ b/aitasker/src/main/java/com/aitasker/admin/controller/AdminUserController.java
+@@ -1,7 +1,7 @@
+ package com.aitasker.admin.controller;
+ 
++import com.aitasker.admin.dto.UserSummaryResponse;
+ import com.aitasker.admin.service.AdminUserService;
+-import com.aitasker.user.entity.User;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.web.bind.annotation.*;
+ 
+@@ -15,7 +15,7 @@ public class AdminUserController {
+     private final AdminUserService adminUserService;
+ 
+     @GetMapping
+-    public List<User> getAllUsers() {
++    public List<UserSummaryResponse> getAllUsers() {
+         return adminUserService.getAllUsers();
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/aitasker/src/main/java/com/aitasker/admin/dto/UserSummaryResponse.java b/aitasker/src/main/java/com/aitasker/admin/dto/UserSummaryResponse.java
+new file mode 100644
+index 0000000..e8b0989
+--- /dev/null
++++ b/aitasker/src/main/java/com/aitasker/admin/dto/UserSummaryResponse.java
+@@ -0,0 +1,34 @@
++package com.aitasker.admin.dto;
++
++import com.aitasker.common.enums.Role;
++import com.aitasker.user.entity.User;
++import lombok.AllArgsConstructor;
++import lombok.Getter;
++import lombok.NoArgsConstructor;
++
++import java.time.LocalDateTime;
++
++/**
++ * Dữ liệu user trả về cho Admin — KHÔNG bao giờ chứa password.
++ */
++@Getter
++@NoArgsConstructor
++@AllArgsConstructor
++public class UserSummaryResponse {
++
++    private Long id;
++    private String name;
++    private String email;
++    private Role role;
++    private LocalDateTime createdAt;
++
++    public static UserSummaryResponse from(User user) {
++        return new UserSummaryResponse(
++                user.getId(),
++                user.getName(),
++                user.getEmail(),
++                user.getRole(),
++                user.getCreatedAt()
++        );
++    }
++}
+diff --git a/aitasker/src/main/java/com/aitasker/admin/service/AdminUserService.java b/aitasker/src/main/java/com/aitasker/admin/service/AdminUserService.java
+index f1c2406..878bddb 100644
+--- a/aitasker/src/main/java/com/aitasker/admin/service/AdminUserService.java
++++ b/aitasker/src/main/java/com/aitasker/admin/service/AdminUserService.java
+@@ -1,6 +1,6 @@
+ package com.aitasker.admin.service;
+ 
+-import com.aitasker.user.entity.User;
++import com.aitasker.admin.dto.UserSummaryResponse;
+ import com.aitasker.user.repository.UserRepository;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.stereotype.Service;
+@@ -13,7 +13,10 @@ public class AdminUserService {
+ 
+     private final UserRepository userRepository;
+ 
+-    public List<User> getAllUsers() {
+-        return userRepository.findAll();
++    public List<UserSummaryResponse> getAllUsers() {
++        return userRepository.findAll()
++                .stream()
++                .map(UserSummaryResponse::from)
++                .toList();
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/aitasker/src/main/java/com/aitasker/config/CorsConfig.java b/aitasker/src/main/java/com/aitasker/config/CorsConfig.java
+index c06427f..4d1c755 100644
+--- a/aitasker/src/main/java/com/aitasker/config/CorsConfig.java
++++ b/aitasker/src/main/java/com/aitasker/config/CorsConfig.java
+@@ -1,5 +1,39 @@
+ package com.aitasker.config;
++
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.context.annotation.Bean;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.web.cors.CorsConfiguration;
++import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
++import org.springframework.web.filter.CorsFilter;
++
++import java.util.Arrays;
++import java.util.List;
++
+ @Configuration
+-public class CorsConfig {}
++public class CorsConfig {
++
++    // Dùng chung danh sách origin với WebSocketConfig, cấu hình qua env
++    // CORS_ALLOWED_ORIGINS thay vì cho phép "*" (không an toàn khi kèm
++    // credentials/JWT trong header Authorization).
++    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
++    private String allowedOrigins;
++
++    @Bean
++    public CorsFilter corsFilter() {
++        CorsConfiguration config = new CorsConfiguration();
++        List<String> origins = Arrays.stream(allowedOrigins.split(","))
++                .map(String::trim)
++                .toList();
++
++        config.setAllowedOrigins(origins);
++        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
++        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
++        config.setAllowCredentials(true);
++
++        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
++        source.registerCorsConfiguration("/**", config);
+ 
++        return new CorsFilter(source);
++    }
++}
+diff --git a/aitasker/src/main/java/com/aitasker/job/service/JobService.java b/aitasker/src/main/java/com/aitasker/job/service/JobService.java
+index a8cf498..8958988 100644
+--- a/aitasker/src/main/java/com/aitasker/job/service/JobService.java
++++ b/aitasker/src/main/java/com/aitasker/job/service/JobService.java
+@@ -1,6 +1,8 @@
+ package com.aitasker.job.service;
+ 
+ import com.aitasker.common.enums.JobStatus;
++import com.aitasker.common.enums.Role;
++import com.aitasker.exception.ForbiddenException;
+ import com.aitasker.exception.ResourceNotFoundException;
+ import com.aitasker.job.dto.JobPostRequest;
+ import com.aitasker.job.dto.JobPostResponse;
+@@ -46,6 +48,7 @@ public class JobService{
+     }
+     public JobPostResponse update(Long id, JobPostRequest request){
+         JobPost job = findById(id);
++        checkOwnership(job);
+         if(job.getStatus() == JobStatus.IN_PROGRESS){
+             throw new com.aitasker.exception.BadRequestException("Không thể cập nhật Job đang IN_PROGRESS");
+         }
+@@ -58,7 +61,28 @@ public class JobService{
+         return toResponse(jobPostRepository.save(job));
+     }
+     public void delete(long id){
+-        jobPostRepository.deleteById(id);
++        JobPost job = findById(id);
++        checkOwnership(job);
++        jobPostRepository.delete(job);
++    }
++
++    /**
++     * Chỉ chủ sở hữu (client đã tạo job) hoặc ADMIN mới được sửa/xóa job này.
++     * Trước bản vá này, mọi CLIENT đã đăng nhập đều sửa/xóa được job của
++     * client khác (lỗi IDOR) vì @PreAuthorize("hasRole('CLIENT')") chỉ kiểm
++     * tra vai trò chứ không kiểm tra quyền sở hữu.
++     */
++    private void checkOwnership(JobPost job){
++        String email = SecurityContextHolder.getContext().getAuthentication().getName();
++        User currentUser = userRepository.findByEmail(email)
++                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
++
++        if (currentUser.getRole() == Role.ADMIN) {
++            return;
++        }
++        if (job.getClient() == null || !job.getClient().getId().equals(currentUser.getId())) {
++            throw new ForbiddenException("Bạn không có quyền thao tác trên Job này.");
++        }
+     }
+     public List<JobPostResponse> search(JobSearchRequest request){
+         return jobPostRepository.search(
+diff --git a/aitasker/src/main/java/com/aitasker/security/jwt/JwtFilter.java b/aitasker/src/main/java/com/aitasker/security/jwt/JwtFilter.java
+index d1f76d3..771ea1d 100644
+--- a/aitasker/src/main/java/com/aitasker/security/jwt/JwtFilter.java
++++ b/aitasker/src/main/java/com/aitasker/security/jwt/JwtFilter.java
+@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
+ import jakarta.servlet.http.HttpServletResponse;
+ import java.io.IOException;
+ import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
+ import org.springframework.beans.factory.ObjectProvider;
+ import org.springframework.lang.NonNull;
+ import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+@@ -17,6 +18,15 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
+ import org.springframework.stereotype.Component;
+ import org.springframework.web.filter.OncePerRequestFilter;
+ 
++/**
++ * Lọc và xác thực JWT cho mỗi request.
++ *
++ * LƯU Ý BẢO MẬT: KHÔNG log token, header Authorization, hay bất kỳ dữ liệu
++ * nhạy cảm nào ra console/log — kể cả ở mức DEBUG. Log token = log chìa khóa
++ * đăng nhập của user, chỉ cần ai đó đọc được log là chiếm được phiên đăng nhập.
++ * Chỉ log các thông tin không nhạy cảm (URI, username, kết quả valid/invalid).
++ */
++@Slf4j
+ @Component
+ @RequiredArgsConstructor
+ public class JwtFilter extends OncePerRequestFilter {
+@@ -34,54 +44,31 @@ public class JwtFilter extends OncePerRequestFilter {
+             @NonNull FilterChain filterChain
+     ) throws ServletException, IOException {
+ 
+-        System.out.println("\n========== JWT FILTER ==========");
+-        System.out.println("URI: " + request.getRequestURI());
+-
+         UserDetailsService userDetailsService = userDetailsServiceProvider.getIfAvailable();
+ 
+         if (userDetailsService == null) {
+-            System.out.println("UserDetailsService NOT FOUND");
++            log.warn("UserDetailsService bean not found, skipping JWT auth for {}", request.getRequestURI());
+             filterChain.doFilter(request, response);
+             return;
+         }
+ 
+         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
+ 
+-        System.out.println("Authorization Header: " + authHeader);
+-
+         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
+-            System.out.println("No Bearer Token");
+             filterChain.doFilter(request, response);
+             return;
+         }
+ 
+         try {
+             String token = authHeader.substring(BEARER_PREFIX.length());
+-
+-            System.out.println("Token: " + token);
+-
+             String username = jwtService.extractUsername(token);
+ 
+-            System.out.println("Username from token: " + username);
+-
+             if (username != null
+                     && SecurityContextHolder.getContext().getAuthentication() == null) {
+ 
+-                UserDetails userDetails =
+-                        userDetailsService.loadUserByUsername(username);
+-
+-                System.out.println("UserDetails username: "
+-                        + userDetails.getUsername());
+-
+-                System.out.println("Authorities: "
+-                        + userDetails.getAuthorities());
++                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+ 
+-                boolean valid =
+-                        jwtService.isTokenValid(token, userDetails);
+-
+-                System.out.println("Token valid: " + valid);
+-
+-                if (valid) {
++                if (jwtService.isTokenValid(token, userDetails)) {
+ 
+                     UsernamePasswordAuthenticationToken authentication =
+                             new UsernamePasswordAuthenticationToken(
+@@ -91,38 +78,23 @@ public class JwtFilter extends OncePerRequestFilter {
+                             );
+ 
+                     authentication.setDetails(
+-                            new WebAuthenticationDetailsSource()
+-                                    .buildDetails(request)
++                            new WebAuthenticationDetailsSource().buildDetails(request)
+                     );
+ 
+-                    SecurityContextHolder.getContext()
+-                            .setAuthentication(authentication);
+-
+-                    System.out.println("Authentication SET SUCCESS");
++                    SecurityContextHolder.getContext().setAuthentication(authentication);
++                    log.debug("Authenticated user '{}' for {}", username, request.getRequestURI());
+                 } else {
+-                    System.out.println("Token INVALID");
++                    log.debug("Invalid JWT token presented for {}", request.getRequestURI());
+                 }
+-            } else {
+-                System.out.println(
+-                        "Authentication already exists OR username null");
+             }
+ 
+         } catch (JwtException | IllegalArgumentException ex) {
+-
+-            System.out.println("JWT Exception:");
+-            ex.printStackTrace();
+-
++            // Không log ex với đầy đủ stacktrace ra stdout (tránh in lại token trong message
++            // của một số exception). Log message ngắn gọn ở mức WARN là đủ để điều tra.
++            log.warn("JWT processing failed for {}: {}", request.getRequestURI(), ex.getMessage());
+             SecurityContextHolder.clearContext();
+         }
+ 
+         filterChain.doFilter(request, response);
+-
+-        System.out.println(
+-                "Authentication after filter: "
+-                        + SecurityContextHolder.getContext()
+-                        .getAuthentication()
+-        );
+-
+-        System.out.println("========== END JWT FILTER ==========\n");
+     }
+-}
+\ No newline at end of file
++}
+diff --git a/aitasker/src/main/java/com/aitasker/user/entity/User.java b/aitasker/src/main/java/com/aitasker/user/entity/User.java
+index d72620e..9361ed5 100644
+--- a/aitasker/src/main/java/com/aitasker/user/entity/User.java
++++ b/aitasker/src/main/java/com/aitasker/user/entity/User.java
+@@ -2,6 +2,7 @@ package com.aitasker.user.entity;
+ 
+ import com.aitasker.common.entity.BaseEntity;
+ import com.aitasker.common.enums.Role;
++import com.fasterxml.jackson.annotation.JsonIgnore;
+ import jakarta.persistence.*;
+ import lombok.Getter;
+ import lombok.Setter;
+@@ -20,6 +21,9 @@ public class User extends BaseEntity {
+     @Column(nullable = false, unique = true)
+     private String email;
+ 
++    // Không bao giờ serialize password ra JSON, kể cả khi entity vô tình
++    // bị trả trực tiếp từ một controller/service nào đó trong tương lai.
++    @JsonIgnore
+     @Column(nullable = false)
+     private String password;
+ 
+diff --git a/aitasker/src/main/java/com/aitasker/websocket/config/JwtHandshakeChannelInterceptor.java b/aitasker/src/main/java/com/aitasker/websocket/config/JwtHandshakeChannelInterceptor.java
+new file mode 100644
+index 0000000..bbee085
+--- /dev/null
++++ b/aitasker/src/main/java/com/aitasker/websocket/config/JwtHandshakeChannelInterceptor.java
+@@ -0,0 +1,76 @@
++package com.aitasker.websocket.config;
++
++import com.aitasker.security.jwt.JwtService;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.lang.NonNull;
++import org.springframework.messaging.Message;
++import org.springframework.messaging.MessageChannel;
++import org.springframework.messaging.simp.stomp.StompCommand;
++import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
++import org.springframework.messaging.support.ChannelInterceptor;
++import org.springframework.messaging.support.MessageHeaderAccessor;
++import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
++import org.springframework.security.core.userdetails.UserDetails;
++import org.springframework.security.core.userdetails.UserDetailsService;
++import org.springframework.stereotype.Component;
++
++/**
++ * Bắt buộc client phải gửi JWT hợp lệ trong header STOMP "Authorization"
++ * khi thực hiện CONNECT. Trước bản vá này, endpoint /ws được permitAll()
++ * ở tầng HTTP (bắt buộc, vì bắt tay SockJS là HTTP thường) nhưng KHÔNG có
++ * bước xác thực nào ở tầng STOMP -> bất kỳ ai cũng subscribe/publish được
++ * vào các kênh chat mà không cần đăng nhập.
++ *
++ * Sau bản vá: CONNECT không có / sai JWT sẽ bị từ chối ngay, và Principal
++ * của phiên WebSocket được gắn với user đã xác thực để dùng cho
++ * SimpMessagingTemplate.convertAndSendToUser(...).
++ */
++@Slf4j
++@Component
++@RequiredArgsConstructor
++public class JwtHandshakeChannelInterceptor implements ChannelInterceptor {
++
++    private static final String BEARER_PREFIX = "Bearer ";
++
++    private final JwtService jwtService;
++    private final UserDetailsService userDetailsService;
++
++    @Override
++    public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
++        StompHeaderAccessor accessor =
++                MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
++
++        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
++            String authHeader = accessor.getFirstNativeHeader("Authorization");
++
++            if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
++                log.warn("WebSocket CONNECT rejected: missing Authorization header");
++                throw new org.springframework.messaging.simp.stomp.StompConversionException(
++                        "Missing or invalid Authorization header");
++            }
++
++            String token = authHeader.substring(BEARER_PREFIX.length());
++
++            try {
++                String username = jwtService.extractUsername(token);
++                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
++
++                if (!jwtService.isTokenValid(token, userDetails)) {
++                    throw new org.springframework.messaging.simp.stomp.StompConversionException(
++                            "Invalid or expired token");
++                }
++
++                accessor.setUser(new UsernamePasswordAuthenticationToken(
++                        userDetails, null, userDetails.getAuthorities()));
++
++            } catch (Exception ex) {
++                log.warn("WebSocket CONNECT rejected: {}", ex.getMessage());
++                throw new org.springframework.messaging.simp.stomp.StompConversionException(
++                        "Authentication failed");
++            }
++        }
++
++        return message;
++    }
++}
+diff --git a/aitasker/src/main/java/com/aitasker/websocket/config/WebSocketConfig.java b/aitasker/src/main/java/com/aitasker/websocket/config/WebSocketConfig.java
+index 2d5fae9..abca353 100644
+--- a/aitasker/src/main/java/com/aitasker/websocket/config/WebSocketConfig.java
++++ b/aitasker/src/main/java/com/aitasker/websocket/config/WebSocketConfig.java
+@@ -1,6 +1,9 @@
+ package com.aitasker.websocket.config;
+ 
++import lombok.RequiredArgsConstructor;
++import org.springframework.beans.factory.annotation.Value;
+ import org.springframework.context.annotation.Configuration;
++import org.springframework.messaging.simp.config.ChannelRegistration;
+ import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+@@ -8,13 +11,22 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
+ 
+ @Configuration
+ @EnableWebSocketMessageBroker
++@RequiredArgsConstructor
+ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+ 
++    private final JwtHandshakeChannelInterceptor jwtHandshakeChannelInterceptor;
++
++    // Trước là "*" (mọi origin) — thu hẹp lại qua cấu hình để tránh CSWSH
++    // (Cross-Site WebSocket Hijacking). Đặt CORS_ALLOWED_ORIGINS trong env
++    // ở production; mặc định chỉ cho phép localhost lúc dev.
++    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
++    private String[] allowedOrigins;
++
+     @Override
+     public void registerStompEndpoints(StompEndpointRegistry registry) {
+ 
+         registry.addEndpoint("/ws")
+-                .setAllowedOriginPatterns("*")
++                .setAllowedOrigins(allowedOrigins)
+                 .withSockJS();
+     }
+ 
+@@ -26,4 +38,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+         registry.setApplicationDestinationPrefixes("/app");
+         registry.setUserDestinationPrefix("/user");
+     }
++
++    @Override
++    public void configureClientInboundChannel(ChannelRegistration registration) {
++        // Bắt buộc xác thực JWT ở mỗi frame CONNECT trước khi cho phép
++        // subscribe/publish vào bất kỳ kênh nào.
++        registration.interceptors(jwtHandshakeChannelInterceptor);
++    }
+ }
+diff --git a/aitasker/src/main/resources/application.yaml b/aitasker/src/main/resources/application.yaml
+index ecf9609..f26672e 100644
+--- a/aitasker/src/main/resources/application.yaml
++++ b/aitasker/src/main/resources/application.yaml
+@@ -3,15 +3,15 @@ spring:
+     name: aitasker
+ 
+   datasource:
+-    url: jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true
+-    username: sa
+-    password: Aa123456 #tự đổi theo pass SQL Server của mọi người
++    url: ${DB_URL:jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true}
++    username: ${DB_USERNAME:sa}
++    password: ${DB_PASSWORD}
+     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+ 
+   jpa:
+     hibernate:
+-      ddl-auto: create
+-    show-sql: true
++      ddl-auto: ${JPA_DDL_AUTO:update}
++    show-sql: ${JPA_SHOW_SQL:false}
+ 
+     properties:
+       hibernate:
+@@ -19,5 +19,7 @@ spring:
+ 
+ app:
+   jwt:
+-    secret: "aitasker-jwt-secret-key-must-be-at-least-32-characters"
+-    expiration-ms: 86400000
+\ No newline at end of file
++    secret: ${JWT_SECRET}
++    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
++  cors:
++    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
