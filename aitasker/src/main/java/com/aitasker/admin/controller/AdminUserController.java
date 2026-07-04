@@ -1,7 +1,7 @@
 package com.aitasker.admin.controller;
 
+import com.aitasker.admin.dto.UserSummaryResponse;
 import com.aitasker.admin.service.AdminUserService;
-import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +15,7 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
 
     @GetMapping
-    public List<User> getAllUsers() {
+    public List<UserSummaryResponse> getAllUsers() {
         return adminUserService.getAllUsers();
     }
 }

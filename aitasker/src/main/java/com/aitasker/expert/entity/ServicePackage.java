@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "service_packages")
 @Getter
@@ -25,8 +27,9 @@ public class ServicePackage extends BaseEntity {
     @Column(nullable = false)
     private String packageName;
 
-    @Column(nullable = false)
-    private double price;
+    // double -> BigDecimal: tránh sai số dấu phẩy động khi tính tiền.
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
     @Column(nullable = false)
     private int deliveryDays;

@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
+
 public class UpdateExpertProfileRequest {
     @NotBlank(message = "Họ và tên không được để trống")
     @Size(min = 2, max = 50, message = "Tên phải từ 2 đến 50 ký tự")
@@ -22,7 +24,7 @@ public class UpdateExpertProfileRequest {
 
     @NotNull(message = "Mức giá theo giờ không được để trống")
     @PositiveOrZero(message = "Mức giá không được là số âm")
-    private Double hourlyRate;
+    private BigDecimal hourlyRate;
 
     // Getters và Setters
     public String getFullName() { return fullName; }
@@ -33,6 +35,6 @@ public class UpdateExpertProfileRequest {
     public void setSkills(String skills) { this.skills = skills; }
     public Integer getExperienceYears() { return experienceYears; }
     public void setExperienceYears(Integer experienceYears) { this.experienceYears = experienceYears; }
-    public Double getHourlyRate() { return hourlyRate; }
-    public void setHourlyRate(Double hourlyRate) { this.hourlyRate = hourlyRate; }
+    public BigDecimal getHourlyRate() { return hourlyRate; }
+    public void setHourlyRate(BigDecimal hourlyRate) { this.hourlyRate = hourlyRate; }
 }
