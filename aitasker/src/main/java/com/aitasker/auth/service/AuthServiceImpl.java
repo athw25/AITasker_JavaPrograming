@@ -4,6 +4,7 @@ import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
 import com.aitasker.auth.dto.RegisterRequest;
 import com.aitasker.common.enums.Role;
+import com.aitasker.expert.repository.ExpertProfileRepository;
 import com.aitasker.security.jwt.JwtService;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
@@ -18,6 +19,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final ExpertProfileRepository expertProfileRepository;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -30,13 +32,32 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
+        Role requestedRole;
         try {
-            user.setRole(Role.valueOf(request.getRole().toUpperCase()));
+            requestedRole = Role.valueOf(request.getRole().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Role không hợp lệ. Phải là CLIENT hoặc EXPERT");
         }
 
+        // Trước đây Role.valueOf(...) cho qua cả "ADMIN" vì Role enum có
+        // giá trị đó -> bất kỳ ai cũng tự đăng ký được tài khoản ADMIN qua
+        // API public. Chặn tường minh: API đăng ký công khai chỉ tạo được
+        // CLIENT hoặc EXPERT. Tài khoản ADMIN phải được tạo bằng cách khác
+        // (seed dữ liệu, migration, hoặc một API admin-only riêng).
+        if (requestedRole != Role.CLIENT && requestedRole != Role.EXPERT) {
+            throw new IllegalArgumentException("Role không hợp lệ. Phải là CLIENT hoặc EXPERT");
+        }
+
+        user.setRole(requestedRole);
+
         userRepository.save(user);
+
+        if (user.getRole() == Role.EXPERT) {
+            com.aitasker.expert.entity.ExpertProfile profile = new com.aitasker.expert.entity.ExpertProfile();
+            profile.setUser(user);
+            profile.setFullName(request.getFullName());
+            expertProfileRepository.save(profile);
+        }
 
         return AuthResponse.builder()
                 .message("Đăng ký thành công! Vui lòng đăng nhập.")

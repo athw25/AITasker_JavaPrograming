@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -17,7 +18,7 @@ public class ProposalResponseDTO {
     private String jobTitle;
     private Long expertId;
     private String expertName;
-    private Double bidAmount;
+    private BigDecimal bidAmount;
     private String coverLetter;
     private ProposalStatus status;
     private LocalDateTime submittedAt;

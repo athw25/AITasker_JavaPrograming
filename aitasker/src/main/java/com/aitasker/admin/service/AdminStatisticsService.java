@@ -24,7 +24,7 @@ public class AdminStatisticsService {
                 // User stats
                 .totalUsers(userRepository.count())
                 .totalClients(userRepository.countByRole(Role.CLIENT))
-                .totalExperts(userRepository.countByRole(Role.AI_EXPERT))
+                .totalExperts(userRepository.countByRole(Role.EXPERT))
                 //Job stats
                 .totalJobs(jobPostRepository.count())
                 .openJobs(jobPostRepository.countByStatus(JobStatus.OPEN))

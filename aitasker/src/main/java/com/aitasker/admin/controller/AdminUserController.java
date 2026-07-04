@@ -1,5 +1,6 @@
 package com.aitasker.admin.controller;
 
+import com.aitasker.admin.dto.UserSummaryResponse;
 import com.aitasker.admin.service.AdminUserService;
 import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -16,17 +17,18 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
 
     @GetMapping
-    public List<User> getAllUsers() {
+    public List<UserSummaryResponse> getAllUsers() {
         return adminUserService.getAllUsers();
     }
     @PutMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN')")
-    public void banUser(@PathVariable Long id){
+    public void banUser(@PathVariable Long id) {
         adminUserService.banUser(id);
     }
+
     @PutMapping("/{id}/unban")
     @PreAuthorize("hasRole('ADMIN')")
-    public void unbanUser(@PathVariable Long id){
+    public void unbanUser(@PathVariable Long id) {
         adminUserService.unbanUser(id);
     }
 }

@@ -1,5 +1,6 @@
 package com.aitasker.notification.service;
 
+import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.notification.entity.Notification;
 import com.aitasker.notification.repository.NotificationRepository;
 import com.aitasker.user.entity.User;
@@ -31,14 +32,14 @@ public class NotificationService {
 
         User recipient = userRepository.findById(recipientId)
                 .orElseThrow(() ->
-                        new RuntimeException("Recipient not found"));
+                        new ResourceNotFoundException("Recipient not found"));
 
         Notification notification = Notification.builder()
                 .recipient(recipient)
                 .title(title)
                 .content(content)
                 .type(type)
-                .read(false)
+                .isRead(false)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -71,7 +72,7 @@ public class NotificationService {
         Notification notification =
                 notificationRepository.findById(id)
                         .orElseThrow(() ->
-                                new RuntimeException("Notification not found"));
+                                new ResourceNotFoundException("Notification not found"));
 
         if (!notification.getRecipient().getId().equals(user.getId())) {
 

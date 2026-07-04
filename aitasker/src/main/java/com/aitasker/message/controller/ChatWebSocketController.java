@@ -1,7 +1,7 @@
 package com.aitasker.message.controller;
 
 import com.aitasker.message.dto.ChatMessageRequest;
-import com.aitasker.message.entity.Message;
+import com.aitasker.message.dto.MessageResponse;
 import com.aitasker.message.service.MessageService;
 import com.aitasker.security.userdetails.CustomUserDetails;
 import com.aitasker.user.entity.User;
@@ -24,7 +24,7 @@ public class ChatWebSocketController {
     public void sendMessage(ChatMessageRequest request, Principal principal) {
         User sender = getCurrentUser(principal);
 
-        Message savedMessage = messageService.saveMessage(request, sender);
+        MessageResponse savedMessage = messageService.saveMessage(request, sender);
 
         messagingTemplate.convertAndSend(
                 "/topic/projects/" + request.getProjectId(),

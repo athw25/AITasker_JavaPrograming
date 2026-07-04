@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/milestones")
@@ -55,7 +57,7 @@ public class MilestoneController {
     }
 
     @PutMapping("/{id}/submit")
-    @PreAuthorize("hasRole('AI_EXPERT')")
+    @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Submit a delivery version for a milestone")
     public ApiResponse<MilestoneResponse> submit(@PathVariable Long id,
             @Valid @RequestBody SubmitMilestoneRequest request,
@@ -90,5 +92,12 @@ public class MilestoneController {
             @AuthenticationPrincipal CustomUserDetails principal) {
         return ApiResponse.success("Payment released successfully",
                 milestoneService.releasePayment(id, principal.getUser()));
+    }
+
+    @GetMapping("/project/{projectId}")
+    @Operation(summary = "Get milestones for a project")
+    public ApiResponse<List<MilestoneResponse>> getMilestonesByProject(@PathVariable Long projectId) {
+        return ApiResponse.success("Lấy danh sách milestone thành công",
+                milestoneService.getMilestonesByProject(projectId));
     }
 }

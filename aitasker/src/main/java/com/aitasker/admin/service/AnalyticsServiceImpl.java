@@ -22,7 +22,7 @@ public class AnalyticsServiceImpl implements AnalyticsService{
     @Override
     public AnalyticsStatistics getAnalytics() {
         return AnalyticsStatistics.builder()
-                .totalExperts(userRepository.countByRole(Role.AI_EXPERT))
+                .totalExperts(userRepository.countByRole(Role.EXPERT))
                 .totalClients(userRepository.countByRole(Role.CLIENT))
 
                 .totalProposals(proposalRepository.count())

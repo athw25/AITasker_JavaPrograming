@@ -4,7 +4,10 @@ import com.aitasker.common.response.ApiResponse;
 import com.aitasker.expert.dto.request.CreatePortfolioRequest;
 import com.aitasker.expert.dto.response.PortfolioResponse;
 import com.aitasker.expert.service.PortfolioService;
+import com.aitasker.security.userdetails.CustomUserDetails;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -20,13 +23,16 @@ public class PortfolioController {
 
     // API thêm mới một dự án vào Portfolio
     @PostMapping
-    public ApiResponse<PortfolioResponse> addPortfolio(@Valid @RequestBody CreatePortfolioRequest request) {
-        Long currentUserId = 1L; // Giả lập ID user đang đăng nhập
+    @PreAuthorize("hasRole('EXPERT')")
+    public ApiResponse<PortfolioResponse> addPortfolio(
+            @Valid @RequestBody CreatePortfolioRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        Long currentUserId = principal.getUser().getId();
         PortfolioResponse response = portfolioService.addPortfolio(currentUserId, request);
         return ApiResponse.success("Thêm dự án vào portfolio thành công!", response);
     }
 
-    // API lấy danh sách portfolio của một expert
+    // API lấy danh sách portfolio của một expert (public, không cần đăng nhập)
     @GetMapping("/{expertId}")
     public ApiResponse<List<PortfolioResponse>> getPortfolios(@PathVariable Long expertId) {
         List<PortfolioResponse> list = portfolioService.getPortfoliosByExpert(expertId);
@@ -35,8 +41,11 @@ public class PortfolioController {
 
     // API xóa một dự án khỏi Portfolio dựa theo ID
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deletePortfolio(@PathVariable Long id) {
-        Long currentUserId = 1L; // Giả lập ID user đang đăng nhập
+    @PreAuthorize("hasRole('EXPERT')")
+    public ApiResponse<Void> deletePortfolio(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        Long currentUserId = principal.getUser().getId();
         portfolioService.deletePortfolio(currentUserId, id);
         return ApiResponse.success("Xóa dự án khỏi portfolio thành công!", null);
     }
