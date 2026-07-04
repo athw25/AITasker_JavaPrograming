@@ -100,6 +100,12 @@ public class ProposalService {
         );
     }
 
+    public List<ProposalResponseDTO> getMyProposals(Long expertId) {
+        return proposalRepository.findByExpertId(expertId).stream()
+                .map(this::mapToDTO)
+                .toList();
+    }
+
     // 3. KHÁCH HÀNG CHẤP NHẬN ĐỀ XUẤT
     @Transactional
     public void acceptProposal(Long proposalId, Long clientId) {

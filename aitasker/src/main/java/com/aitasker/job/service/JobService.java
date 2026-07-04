@@ -39,6 +39,15 @@ public class JobService{
     public List<JobPostResponse> getAll(){
         return jobPostRepository.findAll().stream().map(this::toResponse).toList();
     }
+
+    public List<JobPostResponse> getMyJobs() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User client = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
+        return jobPostRepository.findByClientId(client.getId()).stream()
+                .map(this::toResponse)
+                .toList();
+    }
     public JobPostResponse getById(Long id){
         return toResponse(findById(id));
     }
