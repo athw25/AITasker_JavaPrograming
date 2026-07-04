@@ -2,6 +2,7 @@ package com.aitasker.user.entity;
 
 import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.common.enums.Role;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,6 +21,9 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    // Không bao giờ serialize password ra JSON, kể cả khi entity vô tình
+    // bị trả trực tiếp từ một controller/service nào đó trong tương lai.
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
