@@ -1,6 +1,8 @@
 // ProposalRequestDTO.java
 package com.aitasker.proposal.dto.request;
 
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,8 +18,15 @@ public class ProposalRequestDTO {
 
     @NotNull(message = "Giá thầu không được để trống")
     @Min(value = 0, message = "Giá thầu không được âm")
-    private Double bidAmount;
+    private BigDecimal bidAmount;
 
     @NotBlank(message = "Thư giới thiệu không được để trống")
     private String coverLetter;
+
+    @NotNull(message = "Thời gian hoàn thành không được để trống")
+    @Min(value = 1, message = "Thời gian hoàn thành phải lớn hơn 0")
+    private Integer duration;
+
+    public Integer getDuration() { return duration; }
+    public void setDuration(Integer duration) { this.duration = duration; }
 }

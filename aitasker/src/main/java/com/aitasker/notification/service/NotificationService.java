@@ -38,7 +38,7 @@ public class NotificationService {
                 .title(title)
                 .content(content)
                 .type(type)
-                .read(false)
+                .isRead(false)
                 .createdAt(LocalDateTime.now())
                 .build();
 

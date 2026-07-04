@@ -4,6 +4,7 @@ import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
 import com.aitasker.auth.dto.RegisterRequest;
 import com.aitasker.common.enums.Role;
+import com.aitasker.expert.repository.ExpertProfileRepository;
 import com.aitasker.security.jwt.JwtService;
 import com.aitasker.security.refreshtoken.entity.RefreshToken;
 import com.aitasker.security.refreshtoken.repository.RefreshTokenRepository;
@@ -25,6 +26,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final ExpertProfileRepository expertProfileRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptService loginAttemptService;
     private final AuditLogService auditLogService;
@@ -54,8 +56,15 @@ public class AuthServiceImpl implements AuthService {
 
         String ipAddress = auditLogService.getClientIp(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
-        auditLogService.logAction("REGISTER", "USER", user.getId(), user.getId(), 
+        auditLogService.logAction("REGISTER", "USER", user.getId(), user.getId(),
                 user.getEmail(), "User registration", null, ipAddress, userAgent, "SUCCESS");
+
+        if (user.getRole() == Role.EXPERT) {
+            com.aitasker.expert.entity.ExpertProfile profile = new com.aitasker.expert.entity.ExpertProfile();
+            profile.setUser(user);
+            profile.setFullName(request.getFullName());
+            expertProfileRepository.save(profile);
+        }
 
         return AuthResponse.builder()
                 .message("Đăng ký thành công! Vui lòng đăng nhập.")
@@ -87,9 +96,10 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email hoặc mật khẩu không đúng!");
         }
 
-        com.aitasker.security.userdetails.CustomUserDetails userDetails = 
+        com.aitasker.security.userdetails.CustomUserDetails userDetails =
                 new com.aitasker.security.userdetails.CustomUserDetails(user);
 
+        // 4. Sinh JWT Token
         String jwtToken = jwtService.generateToken(userDetails);
         String refreshToken = jwtService.generateRefreshToken(userDetails);
         String rememberMeToken = null;

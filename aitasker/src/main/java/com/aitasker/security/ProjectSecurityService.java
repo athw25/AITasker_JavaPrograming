@@ -16,19 +16,19 @@ public class ProjectSecurityService {
 
     public void checkCanAccessProject(Long projectId, User user) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project not found"));
+                .orElseThrow(() -> new com.aitasker.exception.ResourceNotFoundException("Không tìm thấy Project"));
 
         if (hasRole(user, "ADMIN")) {
             return;
         }
 
         if (hasRole(user, "CLIENT")
-                && user.getId().equals(project.getClientId())) {
+                && user.getId().equals(project.getClient().getId() )) {
             return;
         }
 
-        if (hasRole(user, "AI_EXPERT")
-                && user.getId().equals(project.getExpertId())) {
+        if (hasRole(user, "EXPERT")
+                && user.getId().equals(project.getExpert().getId())) {
             return;
         }
 

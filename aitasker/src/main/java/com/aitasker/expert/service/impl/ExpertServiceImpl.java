@@ -22,14 +22,14 @@ public class ExpertServiceImpl implements ExpertService {
 
     @Override
     public ExpertProfileResponse getMyProfile(Long currentUserId) {
-        ExpertProfile profile = expertRepository.findById(currentUserId)
+        ExpertProfile profile = expertRepository.findByUserId(currentUserId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ chuyên gia!"));
         return expertMapper.toDto(profile);
     }
 
     @Override
     public ExpertProfileResponse updateProfile(Long currentUserId, UpdateExpertProfileRequest request) {
-        ExpertProfile profile = expertRepository.findById(currentUserId)
+        ExpertProfile profile = expertRepository.findByUserId(currentUserId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ chuyên gia!"));
         
         // Cập nhật dữ liệu từ Request lên Entity dữ liệu thật

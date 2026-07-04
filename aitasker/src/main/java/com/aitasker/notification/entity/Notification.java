@@ -29,9 +29,9 @@ public class Notification extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String type;
 
-    @Column(nullable = false)
+    @Column(name = "is_read", nullable = false)
     @Builder.Default
-    private boolean read = false;
+    private boolean isRead = false;
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
