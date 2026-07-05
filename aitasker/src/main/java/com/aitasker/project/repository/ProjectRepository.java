@@ -15,6 +15,107 @@ import java.util.Optional;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
+    /**
+     * Lấy tất cả Project của Client.
+     */
+    List<Project> findByClient_Id(Long clientId);
+
+    /**
+     * Lấy tất cả Project của Expert.
+     */
+    List<Project> findByExpert_Id(Long expertId);
+
+    /**
+     * Lấy tất cả Project mà User tham gia.
+     */
+    List<Project> findDistinctByClient_IdOrExpert_IdOrderByCreatedAtDesc(
+            Long clientId,
+            Long expertId
+    );
+
+    /**
+     * Phân trang Project của Client.
+     */
+    Page<Project> findByClient_Id(
+            Long clientId,
+            Pageable pageable
+    );
+
+    /**
+     * Phân trang Project của Expert.
+     */
+    Page<Project> findByExpert_Id(
+            Long expertId,
+            Pageable pageable
+    );
+
+    /**
+     * Tìm Project theo Proposal.
+     */
+    Optional<Project> findByProposal_Id(Long proposalId);
+
+    /**
+     * Tìm Project theo Job.
+     */
+    Optional<Project> findByJob_Id(Long jobId);
+
+    /**
+     * Kiểm tra Project đã tồn tại theo Proposal chưa.
+     */
+    boolean existsByProposal_Id(Long proposalId);
+
+    /**
+     * Kiểm tra Project đã tồn tại theo Job chưa.
+     */
+    boolean existsByJob_Id(Long jobId);
+
+    /**
+     * Lấy Project theo trạng thái.
+     */
+    List<Project> findByStatus(ProjectStatus status);
+
+    /**
+     * Lấy Project của Client theo trạng thái.
+     */
+    List<Project> findByClient_IdAndStatus(
+            Long clientId,
+            ProjectStatus status
+    );
+
+    /**
+     * Lấy Project của Expert theo trạng thái.
+     */
+    List<Project> findByExpert_IdAndStatus(
+            Long expertId,
+            ProjectStatus status
+    );
+
+    /**
+     * Đếm tổng Project của Expert.
+     */
+    long countByExpert_Id(Long expertId);
+
+    /**
+     * Đếm Project của Expert theo trạng thái.
+     */
+    long countByExpert_IdAndStatus(
+            Long expertId,
+            ProjectStatus status
+    );
+
+    /**
+     * Đếm tổng Project của Client.
+     */
+    long countByClient_Id(Long clientId);
+
+    /**
+     * Tìm Project giữa Client và Expert.
+     */
+    List<Project> findByClientAndExpert(
+            User client,
+            User expert
+    );
+    long countByStatus(ProjectStatus status);
         /**
          * Lấy tất cả Project của Client.
          */
