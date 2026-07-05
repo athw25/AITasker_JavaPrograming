@@ -1,23 +1,36 @@
 package com.aitasker.recommendation.service;
 
+import com.aitasker.exception.ForbiddenException;
 import com.aitasker.exception.ResourceNotFoundException;
+import com.aitasker.common.enums.Role;
+import com.aitasker.common.response.PageResponse;
+import com.aitasker.expert.entity.ExpertProfile;
+import com.aitasker.expert.repository.ExpertProfileRepository;
+import com.aitasker.expert.repository.PortfolioRepository;
 import com.aitasker.job.entity.JobPost;
 import com.aitasker.job.repository.JobPostRepository;
+import com.aitasker.project.repository.ProjectRepository;
+import com.aitasker.proposal.repository.ProposalRepository;
+import com.aitasker.recommendation.dto.response.RecommendationAnalyticsResponse;
 import com.aitasker.recommendation.dto.response.RecommendationResponseDTO;
 import com.aitasker.recommendation.entity.Recommendation;
 import com.aitasker.recommendation.repository.RecommendationRepository;
+import com.aitasker.review.repository.ReviewRepository;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
-import com.aitasker.common.enums.Role;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -27,77 +40,224 @@ public class RecommendationService {
     private final RecommendationRepository recommendationRepository;
     private final JobPostRepository jobPostRepository;
     private final UserRepository userRepository;
+    private final ExpertProfileRepository expertProfileRepository;
+    private final ReviewRepository reviewRepository;
+    private final ProjectRepository projectRepository;
+    private final PortfolioRepository portfolioRepository;
+    private final ProposalRepository proposalRepository;
 
-    // 1. CẬP NHẬT FEEDBACK KHI CLIENT THUÊ EXPERT (Gọi từ ProposalService)
+    // 1. CẬP NHẬT FEEDBACK KHI CLIENT THUÊ EXPERT
     @Transactional
     public void markAsAccepted(Long jobId, Long expertId) {
         recommendationRepository.findByJobIdAndExpertId(jobId, expertId).ifPresent(rec -> {
             rec.setAccepted(true);
             recommendationRepository.save(rec);
-            log.info("Cập nhật Analytics RQ1: Client đã thuê Expert {} cho Job {}.", expertId, jobId);
+            log.info("Analytics RQ1: Client đã thuê Expert {} cho Job {}.", expertId, jobId);
         });
     }
 
-    // 2. THUẬT TOÁN ĐỀ XUẤT EXPERT CHO MỘT JOB
+    // 2. THUẬT TOÁN ĐỀ XUẤT EXPERT CHO MỘT JOB (Sử dụng 5 chỉ số thực tế)
     @Transactional
     public List<RecommendationResponseDTO> recommendExpertsForJob(Long jobId) {
         JobPost job = jobPostRepository.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Job ID: " + jobId));
 
-        // Lấy danh sách toàn bộ Expert trên hệ thống
-        List<User> allExperts = userRepository.findAll().stream()
-                .filter(user -> user.getRole() == Role.EXPERT)
-                .collect(Collectors.toList());
+        // Bảo mật kiểm tra quyền sở hữu công việc
+        checkJobOwnership(job);
+
+        // Lấy danh sách hồ sơ chuyên gia tối ưu
+        List<ExpertProfile> allExpertProfiles = expertProfileRepository.findByRoleWithUser(Role.EXPERT);
+
+        // Nạp trước dữ liệu dạng Batch tránh lỗi N+1
+        Map<Long, Double> averageRatings = fetchBatchAverageRatings();
+        Map<Long, Long> totalProjects = fetchBatchTotalProjects();
+        Map<Long, Long> completedProjects = fetchBatchCompletedProjects();
+        Map<Long, Long> portfolioCounts = fetchBatchPortfolioCounts();
 
         List<Recommendation> recommendations = new ArrayList<>();
 
-        for (User expert : allExperts) {
-            // Áp dụng công thức: 40% Skills + 20% Rating + 20% Success Rate + 20% Experience
-            double skillScore = calculateSkillMatch(job.getRequiredSkills(), expert) * 0.4;
-            double ratingScore = getExpertRating(expert) * 0.2;
-            double successRateScore = getExpertSuccessRate(expert) * 0.2;
-            double experienceScore = getExpertExperience(expert) * 0.2;
+        for (ExpertProfile profile : allExpertProfiles) {
+            User expert = profile.getUser();
 
-            double totalMatchScore = skillScore + ratingScore + successRateScore + experienceScore;
+            // Tính điểm các thành phần
+            double skillScore = calculateSkillMatch(job.getRequiredSkills(), profile.getSkills());
+            double ratingScore = calculateRatingScore(expert.getId(), averageRatings);
+            double successRateScore = calculateSuccessRateScore(expert.getId(), totalProjects, completedProjects);
+            double experienceScore = calculateExperienceScore(profile);
+            double portfolioScore = calculatePortfolioScore(expert.getId(), portfolioCounts);
 
-            // Lọc những người có độ phù hợp trên 50%
+            // Công thức áp dụng: 30% Skills + 20% Rating + 20% Success Rate + 15% Experience + 15% Portfolio
+            double totalMatchScore = (skillScore * 0.3)
+                    + (ratingScore * 0.2)
+                    + (successRateScore * 0.2)
+                    + (experienceScore * 0.15)
+                    + (portfolioScore * 0.15);
+
+            // Đạt trên 50 điểm mới tiến hành lưu gợi ý
             if (totalMatchScore >= 50.0) {
                 Recommendation rec = recommendationRepository.findByJobIdAndExpertId(jobId, expert.getId())
                         .orElse(new Recommendation());
 
                 rec.setJob(job);
                 rec.setExpert(expert);
-                rec.setMatchScore(Math.round(totalMatchScore * 100.0) / 100.0); // Làm tròn 2 chữ số
+                rec.setMatchScore(Math.round(totalMatchScore * 100.0) / 100.0);
+                rec.setSkillScore(Math.round(skillScore * 100.0) / 100.0);
+                rec.setRatingScore(Math.round(ratingScore * 100.0) / 100.0);
+                rec.setSuccessRateScore(Math.round(successRateScore * 100.0) / 100.0);
+                rec.setExperienceScore(Math.round(experienceScore * 100.0) / 100.0);
+                rec.setPortfolioScore(Math.round(portfolioScore * 100.0) / 100.0);
 
                 recommendations.add(rec);
             }
         }
 
-        // Lưu toàn bộ lịch sử gợi ý xuống Database để đo lường
         recommendationRepository.saveAll(recommendations);
-        log.info("Đã sinh và lưu {} gợi ý chuyên gia cho Job ID: {}", recommendations.size(), jobId);
+        log.info("Đã lưu {} gợi ý chuyên gia cho Job ID: {}", recommendations.size(), jobId);
 
-        // Sắp xếp điểm từ cao xuống thấp và map ra DTO trả về cho Client
         return recommendations.stream()
                 .sorted(Comparator.comparing(Recommendation::getMatchScore).reversed())
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
 
-    // 3. XEM LỊCH SỬ FEEDBACK CỦA MỘT JOB
+    // 3. XEM LỊCH SỬ GỢI Ý CỦA MỘT JOB
+    @Transactional(readOnly = true)
     public List<RecommendationResponseDTO> getRecommendationHistory(Long jobId) {
+        JobPost job = jobPostRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Job ID: " + jobId));
+
+        checkJobOwnership(job);
+
         return recommendationRepository.findByJobId(jobId).stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
     }
 
-    private double calculateSkillMatch(String requiredSkills, User expert) {
-        // Tạm thời trả về ngẫu nhiên để test luồng, thay bằng logic so sánh chuỗi thật
-        return 80.0 + Math.random() * 20.0;
+    // 4. LẤY DANH SÁCH PHÂN TRANG (ADMIN)
+    @Transactional(readOnly = true)
+    public PageResponse<RecommendationResponseDTO> getAllRecommendations(int page, int size, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Recommendation> recPage = recommendationRepository.findAllWithJobAndExpert(pageable);
+
+        List<RecommendationResponseDTO> content = recPage.getContent().stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(
+                content,
+                recPage.getNumber(),
+                recPage.getSize(),
+                recPage.getTotalElements(),
+                recPage.getTotalPages(),
+                recPage.isFirst(),
+                recPage.isLast()
+        );
     }
-    private double getExpertRating(User expert) { return 90.0; } // Giả lập Rating 4.5/5 -> 90 điểm
-    private double getExpertSuccessRate(User expert) { return 95.0; }
-    private double getExpertExperience(User expert) { return 85.0; }
+
+    // 5. THỐNG KÊ ANALYTICS RQ1
+    @Transactional(readOnly = true)
+    public RecommendationAnalyticsResponse getAnalytics() {
+        long total = recommendationRepository.countOverall();
+        long accepted = recommendationRepository.countAcceptedOverall();
+        double acceptanceRate = total > 0 ? ((double) accepted / total) * 100.0 : 0.0;
+
+        // Tính Proposal Conversion Rate hệ thống
+        long totalProposals = proposalRepository.countTotalProposals();
+        long acceptedProposals = proposalRepository.countAcceptedProposals();
+        double proposalConversionRate = totalProposals > 0 ? ((double) acceptedProposals / totalProposals) * 100.0 : 0.0;
+
+        Double avgOverall = recommendationRepository.getAverageMatchScoreOverall();
+        Double avgAccepted = recommendationRepository.getAverageMatchScoreOfAccepted();
+
+        // Độ chính xác khuyến nghị (Đo bằng độ lệch điểm trung bình được chấp nhận so với thang điểm 100)
+        double recAccuracy = avgAccepted != null ? avgAccepted : 0.0;
+
+        return RecommendationAnalyticsResponse.builder()
+                .totalRecommendations(total)
+                .totalAcceptedRecommendations(accepted)
+                .acceptanceRate(Math.round(acceptanceRate * 100.0) / 100.0)
+                .proposalConversionRate(Math.round(proposalConversionRate * 100.0) / 100.0)
+                .recommendationAccuracy(Math.round(recAccuracy * 100.0) / 100.0)
+                .averageMatchScoreOverall(avgOverall != null ? Math.round(avgOverall * 100.0) / 100.0 : 0.0)
+                .averageMatchScoreOfAccepted(avgAccepted != null ? Math.round(avgAccepted * 100.0) / 100.0 : 0.0)
+                .build();
+    }
+
+    // --- LOGIC CHI TIẾT TỪNG PHẦN ---
+
+    private double calculateSkillMatch(String requiredSkills, String expertSkills) {
+        if (requiredSkills == null || requiredSkills.isBlank()) return 100.0;
+        if (expertSkills == null || expertSkills.isBlank()) return 0.0;
+
+        Set<String> reqSet = Stream.of(requiredSkills.split(","))
+                .map(String::trim).map(String::toLowerCase).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
+        Set<String> expSet = Stream.of(expertSkills.split(","))
+                .map(String::trim).map(String::toLowerCase).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
+
+        if (reqSet.isEmpty()) return 100.0;
+
+        long matchedCount = reqSet.stream().filter(expSet::contains).count();
+        return ((double) matchedCount / reqSet.size()) * 100.0;
+    }
+
+    private double calculateRatingScore(Long expertId, Map<Long, Double> averageRatings) {
+        Double avgRating = averageRatings.get(expertId);
+        return avgRating == null ? 80.0 : (avgRating / 5.0) * 100.0;
+    }
+
+    private double calculateSuccessRateScore(Long expertId, Map<Long, Long> totalProjects, Map<Long, Long> completedProjects) {
+        long total = totalProjects.getOrDefault(expertId, 0L);
+        long completed = completedProjects.getOrDefault(expertId, 0L);
+        return total == 0 ? 100.0 : ((double) completed / total) * 100.0;
+    }
+
+    private double calculateExperienceScore(ExpertProfile profile) {
+        // Tối đa 5 năm đạt 100 điểm
+        return Math.min(profile.getExperienceYears(), 5) * 20.0;
+    }
+
+    private double calculatePortfolioScore(Long expertId, Map<Long, Long> portfolioCounts) {
+        long count = portfolioCounts.getOrDefault(expertId, 0L);
+        // Có 5 sản phẩm nổi bật trở lên đạt 100 điểm
+        return Math.min(count, 5) * 20.0;
+    }
+
+    // --- BATCH FETCH HELPERS ---
+
+    private Map<Long, Double> fetchBatchAverageRatings() {
+        return reviewRepository.getAverageRatingsForExperts().stream()
+                .filter(obj -> obj[0] != null && obj[1] != null)
+                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Double) obj[1]));
+    }
+
+    private Map<Long, Long> fetchBatchTotalProjects() {
+        return projectRepository.getTotalProjectsCountForExperts().stream()
+                .filter(obj -> obj[0] != null && obj[1] != null)
+                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Long) obj[1]));
+    }
+
+    private Map<Long, Long> fetchBatchCompletedProjects() {
+        return projectRepository.getCompletedProjectsCountForExperts().stream()
+                .filter(obj -> obj[0] != null && obj[1] != null)
+                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Long) obj[1]));
+    }
+
+    private Map<Long, Long> fetchBatchPortfolioCounts() {
+        return portfolioRepository.getPortfolioCountsForExperts().stream()
+                .filter(obj -> obj[0] != null && obj[1] != null)
+                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Long) obj[1]));
+    }
+
+    private void checkJobOwnership(JobPost job) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User currentUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hiện tại"));
+
+        if (currentUser.getRole() != Role.ADMIN && !job.getClient().getId().equals(currentUser.getId())) {
+            throw new ForbiddenException("Bạn không có quyền xem thông tin đề xuất của công việc này.");
+        }
+    }
 
     private RecommendationResponseDTO mapToDTO(Recommendation rec) {
         return RecommendationResponseDTO.builder()
@@ -106,14 +266,13 @@ public class RecommendationService {
                 .expertId(rec.getExpert().getId())
                 .expertName(rec.getExpert().getName())
                 .matchScore(rec.getMatchScore())
+                .skillScore(rec.getSkillScore())
+                .ratingScore(rec.getRatingScore())
+                .successRateScore(rec.getSuccessRateScore())
+                .experienceScore(rec.getExperienceScore())
+                .portfolioScore(rec.getPortfolioScore())
                 .isAccepted(rec.isAccepted())
                 .createdAt(rec.getCreatedAt())
                 .build();
-    }
-    // 4. LẤY TOÀN BỘ LỊCH SỬ GỢI Ý (Phục vụ API /api/recommendations cho RQ1)
-    public List<RecommendationResponseDTO> getAllRecommendations() {
-        return recommendationRepository.findAll().stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
     }
 }

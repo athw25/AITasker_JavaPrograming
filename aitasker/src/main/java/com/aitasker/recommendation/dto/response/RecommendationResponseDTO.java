@@ -18,6 +18,7 @@ public class RecommendationResponseDTO {
     private Double ratingScore;
     private Double successRateScore;
     private Double experienceScore;
+    private Double portfolioScore; // Bổ sung
     private boolean isAccepted;
     private LocalDateTime createdAt;
 }
