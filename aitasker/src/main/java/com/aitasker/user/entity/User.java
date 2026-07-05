@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
@@ -37,4 +38,21 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
+    @Column(name = "failed_login_attempts", columnDefinition = "INT DEFAULT 0")
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "account_locked", columnDefinition = "BIT DEFAULT 0")
+    private Boolean accountLocked = false;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
+    @Column(name = "remember_me_token", length = 500)
+    private String rememberMeToken;
+
+    @Column(name = "remember_me_expires")
+    private LocalDateTime rememberMeExpires;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
 }

@@ -6,11 +6,18 @@ import com.aitasker.auth.dto.RegisterRequest;
 import com.aitasker.common.enums.Role;
 import com.aitasker.expert.repository.ExpertProfileRepository;
 import com.aitasker.security.jwt.JwtService;
+import com.aitasker.security.refreshtoken.entity.RefreshToken;
+import com.aitasker.security.refreshtoken.repository.RefreshTokenRepository;
+import com.aitasker.security.ratelimit.LoginAttemptService;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
+import com.aitasker.audit.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -20,8 +27,13 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final ExpertProfileRepository expertProfileRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final LoginAttemptService loginAttemptService;
+    private final AuditLogService auditLogService;
+    private final HttpServletRequest httpServletRequest;
 
     @Override
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email này đã được sử dụng!");
@@ -31,6 +43,8 @@ public class AuthServiceImpl implements AuthService {
         user.setName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setFailedLoginAttempts(0);
+        user.setAccountLocked(false);
 
         Role requestedRole;
         try {
@@ -52,6 +66,11 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
+        String ipAddress = auditLogService.getClientIp(httpServletRequest);
+        String userAgent = httpServletRequest.getHeader("User-Agent");
+        auditLogService.logAction("REGISTER", "USER", user.getId(), user.getId(),
+                user.getEmail(), "User registration", null, ipAddress, userAgent, "SUCCESS");
+
         if (user.getRole() == Role.EXPERT) {
             com.aitasker.expert.entity.ExpertProfile profile = new com.aitasker.expert.entity.ExpertProfile();
             profile.setUser(user);
@@ -66,25 +85,58 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    @Transactional
     public AuthResponse login(LoginRequest request) {
-        // 1. Tìm user trong Database dựa vào email
-        com.aitasker.user.entity.User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Email hoặc mật khẩu không đúng!"));
+        String ipAddress = auditLogService.getClientIp(httpServletRequest);
+        String userAgent = httpServletRequest.getHeader("User-Agent");
 
-        // 2. Kiểm tra mật khẩu
+        if (loginAttemptService.isAccountLocked(request.getEmail())) {
+            auditLogService.logLogin(null, request.getEmail(), ipAddress, userAgent, "LOCKED");
+            throw new IllegalArgumentException("Tài khoản bị khóa! Vui lòng thử lại sau 15 phút.");
+        }
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> {
+                    loginAttemptService.loginFailed(request.getEmail());
+                    auditLogService.logLogin(null, request.getEmail(), ipAddress, userAgent, "FAILED_INVALID_EMAIL");
+                    return new IllegalArgumentException("Email hoặc mật khẩu không đúng!");
+                });
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            loginAttemptService.loginFailed(request.getEmail());
+            auditLogService.logLogin(user.getId(), user.getEmail(), ipAddress, userAgent, "FAILED_INVALID_PASSWORD");
             throw new IllegalArgumentException("Email hoặc mật khẩu không đúng!");
         }
 
-        // Gói Entity User (của TV2) vào trong CustomUserDetails (của TV3)
-        com.aitasker.security.userdetails.CustomUserDetails userDetails = new com.aitasker.security.userdetails.CustomUserDetails(user);
+        com.aitasker.security.userdetails.CustomUserDetails userDetails =
+                new com.aitasker.security.userdetails.CustomUserDetails(user);
 
         // 4. Sinh JWT Token
         String jwtToken = jwtService.generateToken(userDetails);
+        String refreshToken = jwtService.generateRefreshToken(userDetails);
+        String rememberMeToken = null;
 
-        // 5. Trả token về cho Client
+        if (request.isRememberMe()) {
+            rememberMeToken = jwtService.generateRememberMeToken(userDetails);
+            user.setRememberMeToken(rememberMeToken);
+            user.setRememberMeExpires(LocalDateTime.now().plusDays(30));
+        }
+
+        RefreshToken refreshTokenEntity = RefreshToken.builder()
+                .user(user)
+                .token(refreshToken)
+                .expiryDate(LocalDateTime.now().plusDays(7))
+                .revoked(false)
+                .build();
+        refreshTokenRepository.save(refreshTokenEntity);
+
+        loginAttemptService.loginSucceeded(request.getEmail());
+        auditLogService.logLogin(user.getId(), user.getEmail(), ipAddress, userAgent, "SUCCESS");
+
         return AuthResponse.builder()
                 .token(jwtToken)
+                .refreshToken(refreshToken)
+                .rememberMeToken(rememberMeToken)
                 .message("Đăng nhập thành công!")
                 .build();
     }
