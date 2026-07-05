@@ -1,5 +1,6 @@
 package com.aitasker.expert.service.impl;
 
+import com.aitasker.exception.ForbiddenException;
 import com.aitasker.expert.dto.request.CreateServicePackageRequest;
 import com.aitasker.expert.dto.response.ServicePackageResponse;
 import com.aitasker.expert.entity.ServicePackage;
@@ -54,7 +55,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         
         // Kiểm tra quyền sở hữu (Security Integration)
         if (!pack.getExpertId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
+            // Trước đây ném ExpertNotFoundException (không có handler riêng
+            // -> rơi vào nhánh 500 chung) dù bản chất đây là lỗi 403 Forbidden.
+            throw new ForbiddenException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
         }
 
         pack.setPackageName(request.getPackageName());
@@ -72,7 +75,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         
         // Kiểm tra quyền sở hữu (Security Integration)
         if (!pack.getExpertId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền xóa gói dịch vụ của người khác!");
+            throw new ForbiddenException("Bạn không có quyền xóa gói dịch vụ của người khác!");
         }
         packageRepository.deleteById(packageId);
     }

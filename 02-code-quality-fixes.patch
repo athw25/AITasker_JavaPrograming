@@ -1,0 +1,1028 @@
+diff --git a/aitasker/src/main/java/com/aitasker/common/enums/PaymentStatus.java b/aitasker/src/main/java/com/aitasker/common/enums/PaymentStatus.java
+deleted file mode 100644
+index ebcfb2a..0000000
+--- a/aitasker/src/main/java/com/aitasker/common/enums/PaymentStatus.java
++++ /dev/null
+@@ -1,8 +0,0 @@
+-package com.aitasker.common.enums;// PaymentStatus.java
+-
+-public enum PaymentStatus {
+-    PENDING,
+-    HELD,
+-    RELEASED,
+-    REFUNDED
+-}
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/exception/GlobalExceptionHandler.java b/aitasker/src/main/java/com/aitasker/exception/GlobalExceptionHandler.java
+index 3e3502e..a4a2fde 100644
+--- a/aitasker/src/main/java/com/aitasker/exception/GlobalExceptionHandler.java
++++ b/aitasker/src/main/java/com/aitasker/exception/GlobalExceptionHandler.java
+@@ -1,8 +1,12 @@
+ // GlobalExceptionHandler.java
+ package com.aitasker.exception;
+ import com.aitasker.common.response.BaseResponse;
++import com.aitasker.expert.exception.ExpertNotFoundException;
++import com.aitasker.expert.exception.ServicePackageNotFoundException;
++import lombok.extern.slf4j.Slf4j;
+ import org.springframework.http.HttpStatus;
+ import org.springframework.http.ResponseEntity;
++import org.springframework.security.access.AccessDeniedException;
+ import org.springframework.web.bind.annotation.ExceptionHandler;
+ import org.springframework.web.bind.annotation.RestControllerAdvice;
+ import org.springframework.web.bind.MethodArgumentNotValidException;
+@@ -11,6 +15,7 @@ import jakarta.validation.ConstraintViolationException;
+ import java.util.HashMap;
+ import java.util.Map;
+ 
++@Slf4j
+ @RestControllerAdvice
+ public class GlobalExceptionHandler {
+     // không tìm thấy dữ liệu (404)
+@@ -18,6 +23,19 @@ public class GlobalExceptionHandler {
+     public ResponseEntity<BaseResponse> handleResourceNotFound(ResourceNotFoundException ex){
+         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new BaseResponse(false, ex.getMessage()));
+     }
++
++    // Hai exception này trước đây KHÔNG có handler riêng nên rơi vào nhánh
++    // 500 chung dù bản chất là lỗi 404 (không tìm thấy expert/service package).
++    @ExceptionHandler(ExpertNotFoundException.class)
++    public ResponseEntity<BaseResponse> handleExpertNotFound(ExpertNotFoundException ex){
++        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new BaseResponse(false, ex.getMessage()));
++    }
++
++    @ExceptionHandler(ServicePackageNotFoundException.class)
++    public ResponseEntity<BaseResponse> handleServicePackageNotFound(ServicePackageNotFoundException ex){
++        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new BaseResponse(false, ex.getMessage()));
++    }
++
+     // dữ liệu đầu vào không hợp lệ(400)
+     @ExceptionHandler(BadRequestException.class)
+     public ResponseEntity<BaseResponse> handleBadRequest(BadRequestException ex){
+@@ -33,6 +51,15 @@ public class GlobalExceptionHandler {
+     public ResponseEntity<BaseResponse> handleForbidden(ForbiddenException ex){
+         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new BaseResponse(false, ex.getMessage()));
+     }
++
++    // Spring Security ném AccessDeniedException (kể cả khi bị throw thủ công
++    // trong service, ví dụ NotificationService.markAsRead) — trước đây không
++    // có handler riêng nên cũng rơi vào nhánh 500 chung thay vì 403 đúng nghĩa.
++    @ExceptionHandler(AccessDeniedException.class)
++    public ResponseEntity<BaseResponse> handleAccessDenied(AccessDeniedException ex){
++        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new BaseResponse(false, ex.getMessage()));
++    }
++
+     //lỗi nghiệp vụ(422)
+     @ExceptionHandler(BusinessException.class)
+     public ResponseEntity<BaseResponse> handleBusiness(BusinessException ex){
+@@ -65,19 +92,26 @@ public class GlobalExceptionHandler {
+         return ResponseEntity.badRequest().body(new BaseResponse(false, ex.getMessage()));
+     }
+ 
+-    //Lỗi hệ thống chung(500)
+-    @ExceptionHandler(Exception.class)
+-    public ResponseEntity<BaseResponse> handleException(Exception ex){
+-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new BaseResponse(false, "Internal Server Error"));
+-    }
+-
+     //Lỗi IllegalArgumentException - thường dùng cho các lỗi liên quan đến dữ liệu đầu vào không hợp lệ, hoặc lỗi logic trong code.
+     @ExceptionHandler(IllegalArgumentException.class)
+     public ResponseEntity<BaseResponse> handleIllegalArgument(
+             IllegalArgumentException ex
+     ) {
++        log.warn("IllegalArgumentException: {}", ex.getMessage());
+         return ResponseEntity.badRequest().body(
+                 new BaseResponse(false, ex.getMessage())
+         );
+     }
++
++    // Lỗi hệ thống chung (500).
++    // QUAN TRỌNG: phải log đầy đủ stacktrace ở đây — trước bản vá, handler
++    // này nuốt hoàn toàn exception (không log gì), nên mọi lỗi 500 thật ở
++    // production đều KHÔNG để lại dấu vết gì để debug. Đây luôn phải là
++    // @ExceptionHandler cuối cùng (bắt Exception chung) để không che mất các
++    // handler cụ thể hơn ở trên.
++    @ExceptionHandler(Exception.class)
++    public ResponseEntity<BaseResponse> handleException(Exception ex){
++        log.error("Unhandled exception", ex);
++        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new BaseResponse(false, "Internal Server Error"));
++    }
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/expert/dto/request/CreateServicePackageRequest.java b/aitasker/src/main/java/com/aitasker/expert/dto/request/CreateServicePackageRequest.java
+index cec712a..eb562fd 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/dto/request/CreateServicePackageRequest.java
++++ b/aitasker/src/main/java/com/aitasker/expert/dto/request/CreateServicePackageRequest.java
+@@ -4,13 +4,15 @@ import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Positive;
+ 
++import java.math.BigDecimal;
++
+ public class CreateServicePackageRequest {
+     @NotBlank(message = "Tên gói dịch vụ không được để trống")
+     private String packageName;
+ 
+     @NotNull(message = "Giá gói dịch vụ không được để trống")
+     @Positive(message = "Giá dịch vụ phải lớn hơn 0")
+-    private Double price;
++    private BigDecimal price;
+ 
+     @NotNull(message = "Số ngày bàn giao không được để trống")
+     @Positive(message = "Số ngày bàn giao phải lớn hơn 0")
+@@ -19,8 +21,8 @@ public class CreateServicePackageRequest {
+     // Getters và Setters
+     public String getPackageName() { return packageName; }
+     public void setPackageName(String packageName) { this.packageName = packageName; }
+-    public Double getPrice() { return price; }
+-    public void setPrice(Double price) { this.price = price; }
++    public BigDecimal getPrice() { return price; }
++    public void setPrice(BigDecimal price) { this.price = price; }
+     public Integer getDeliveryDays() { return deliveryDays; }
+     public void setDeliveryDays(Integer deliveryDays) { this.deliveryDays = deliveryDays; }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateExpertProfileRequest.java b/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateExpertProfileRequest.java
+index 84354b5..e76a61c 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateExpertProfileRequest.java
++++ b/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateExpertProfileRequest.java
+@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.PositiveOrZero;
+ import jakarta.validation.constraints.Size;
+ 
++import java.math.BigDecimal;
++
+ public class UpdateExpertProfileRequest {
+     @NotBlank(message = "Họ và tên không được để trống")
+     @Size(min = 2, max = 50, message = "Tên phải từ 2 đến 50 ký tự")
+@@ -22,7 +24,7 @@ public class UpdateExpertProfileRequest {
+ 
+     @NotNull(message = "Mức giá theo giờ không được để trống")
+     @PositiveOrZero(message = "Mức giá không được là số âm")
+-    private Double hourlyRate;
++    private BigDecimal hourlyRate;
+ 
+     // Getters và Setters
+     public String getFullName() { return fullName; }
+@@ -33,6 +35,6 @@ public class UpdateExpertProfileRequest {
+     public void setSkills(String skills) { this.skills = skills; }
+     public Integer getExperienceYears() { return experienceYears; }
+     public void setExperienceYears(Integer experienceYears) { this.experienceYears = experienceYears; }
+-    public Double getHourlyRate() { return hourlyRate; }
+-    public void setHourlyRate(Double hourlyRate) { this.hourlyRate = hourlyRate; }
++    public BigDecimal getHourlyRate() { return hourlyRate; }
++    public void setHourlyRate(BigDecimal hourlyRate) { this.hourlyRate = hourlyRate; }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateServicePackageRequest.java b/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateServicePackageRequest.java
+index 5d45b29..adda6ed 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateServicePackageRequest.java
++++ b/aitasker/src/main/java/com/aitasker/expert/dto/request/UpdateServicePackageRequest.java
+@@ -4,13 +4,15 @@ import jakarta.validation.constraints.NotBlank;
+ import jakarta.validation.constraints.NotNull;
+ import jakarta.validation.constraints.Positive;
+ 
++import java.math.BigDecimal;
++
+ public class UpdateServicePackageRequest {
+     @NotBlank(message = "Tên gói dịch vụ không được để trống")
+     private String packageName;
+ 
+     @NotNull(message = "Giá gói dịch vụ không được để trống")
+     @Positive(message = "Giá dịch vụ phải lớn hơn 0")
+-    private Double price;
++    private BigDecimal price;
+ 
+     @NotNull(message = "Số ngày bàn giao không được để trống")
+     @Positive(message = "Số ngày bàn giao phải lớn hơn 0")
+@@ -19,8 +21,8 @@ public class UpdateServicePackageRequest {
+     // Getters và Setters
+     public String getPackageName() { return packageName; }
+     public void setPackageName(String packageName) { this.packageName = packageName; }
+-    public Double getPrice() { return price; }
+-    public void setPrice(Double price) { this.price = price; }
++    public BigDecimal getPrice() { return price; }
++    public void setPrice(BigDecimal price) { this.price = price; }
+     public Integer getDeliveryDays() { return deliveryDays; }
+     public void setDeliveryDays(Integer deliveryDays) { this.deliveryDays = deliveryDays; }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/expert/dto/response/ExpertProfileResponse.java b/aitasker/src/main/java/com/aitasker/expert/dto/response/ExpertProfileResponse.java
+index 03cdf57..e66926f 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/dto/response/ExpertProfileResponse.java
++++ b/aitasker/src/main/java/com/aitasker/expert/dto/response/ExpertProfileResponse.java
+@@ -1,12 +1,14 @@
+ package com.aitasker.expert.dto.response;
+ 
++import java.math.BigDecimal;
++
+ public class ExpertProfileResponse {
+     private Long id;
+     private String fullName;
+     private String title;
+     private String skills;
+     private int experienceYears;
+-    private double hourlyRate;
++    private BigDecimal hourlyRate;
+ 
+     // Nhận xét của TL: Tuyệt đối không đem trường internalNotes vào đây!
+ 
+@@ -21,6 +23,6 @@ public class ExpertProfileResponse {
+     public void setSkills(String skills) { this.skills = skills; }
+     public int getExperienceYears() { return experienceYears; }
+     public void setExperienceYears(int experienceYears) { this.experienceYears = experienceYears; }
+-    public double getHourlyRate() { return hourlyRate; }
+-    public void setHourlyRate(double hourlyRate) { this.hourlyRate = hourlyRate; }
++    public BigDecimal getHourlyRate() { return hourlyRate; }
++    public void setHourlyRate(BigDecimal hourlyRate) { this.hourlyRate = hourlyRate; }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/expert/dto/response/ServicePackageResponse.java b/aitasker/src/main/java/com/aitasker/expert/dto/response/ServicePackageResponse.java
+index 85a80ae..e9ab818 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/dto/response/ServicePackageResponse.java
++++ b/aitasker/src/main/java/com/aitasker/expert/dto/response/ServicePackageResponse.java
+@@ -1,10 +1,12 @@
+ package com.aitasker.expert.dto.response;
+ 
++import java.math.BigDecimal;
++
+ public class ServicePackageResponse {
+     private Long id;
+     private Long expertId;
+     private String packageName;
+-    private double price;
++    private BigDecimal price;
+     private int deliveryDays;
+ 
+     // Getters và Setters
+@@ -14,8 +16,8 @@ public class ServicePackageResponse {
+     public void setExpertId(Long expertId) { this.expertId = expertId; }
+     public String getPackageName() { return packageName; }
+     public void setPackageName(String packageName) { this.packageName = packageName; }
+-    public double getPrice() { return price; }
+-    public void setPrice(double price) { this.price = price; }
++    public BigDecimal getPrice() { return price; }
++    public void setPrice(BigDecimal price) { this.price = price; }
+     public int getDeliveryDays() { return deliveryDays; }
+     public void setDeliveryDays(int deliveryDays) { this.deliveryDays = deliveryDays; }
+-}
+\ No newline at end of file
++}
+diff --git a/aitasker/src/main/java/com/aitasker/expert/entity/ExpertProfile.java b/aitasker/src/main/java/com/aitasker/expert/entity/ExpertProfile.java
+index 681c481..97de82d 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/entity/ExpertProfile.java
++++ b/aitasker/src/main/java/com/aitasker/expert/entity/ExpertProfile.java
+@@ -12,6 +12,8 @@ import lombok.Getter;
+ import lombok.NoArgsConstructor;
+ import lombok.Setter;
+ 
++import java.math.BigDecimal;
++
+ /**
+  * Hồ sơ gốc của Chuyên gia AI lưu dưới Database (chứa ghi chú nội bộ).
+  */
+@@ -34,7 +36,10 @@ public class ExpertProfile extends BaseEntity {
+     private String title;             // Ví dụ: Senior AI Engineer
+     private String skills;            // Ví dụ: "Python, PyTorch, LLM"
+     private int experienceYears;
+-    private double hourlyRate;
++
++    // double -> BigDecimal: tránh sai số dấu phẩy động khi tính tiền công.
++    @Column(precision = 15, scale = 2)
++    private BigDecimal hourlyRate;
+     @Column(columnDefinition = "TEXT")
+     private String internalNotes;     // Thông tin ẩn bí mật của hệ thống
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/expert/entity/ServicePackage.java b/aitasker/src/main/java/com/aitasker/expert/entity/ServicePackage.java
+index c995ea4..3d1706d 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/entity/ServicePackage.java
++++ b/aitasker/src/main/java/com/aitasker/expert/entity/ServicePackage.java
+@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
+ import lombok.AllArgsConstructor;
+ import lombok.Builder;
+ 
++import java.math.BigDecimal;
++
+ @Entity
+ @Table(name = "service_packages")
+ @Getter
+@@ -25,8 +27,9 @@ public class ServicePackage extends BaseEntity {
+     @Column(nullable = false)
+     private String packageName;
+ 
+-    @Column(nullable = false)
+-    private double price;
++    // double -> BigDecimal: tránh sai số dấu phẩy động khi tính tiền.
++    @Column(nullable = false, precision = 15, scale = 2)
++    private BigDecimal price;
+ 
+     @Column(nullable = false)
+     private int deliveryDays;
+diff --git a/aitasker/src/main/java/com/aitasker/expert/service/impl/ExpertServiceImpl.java b/aitasker/src/main/java/com/aitasker/expert/service/impl/ExpertServiceImpl.java
+index 033acb8..1d5f945 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/service/impl/ExpertServiceImpl.java
++++ b/aitasker/src/main/java/com/aitasker/expert/service/impl/ExpertServiceImpl.java
+@@ -1,5 +1,6 @@
+ package com.aitasker.expert.service.impl;
+ 
++import com.aitasker.exception.ResourceNotFoundException;
+ import com.aitasker.expert.dto.request.UpdateExpertProfileRequest;
+ import com.aitasker.expert.dto.response.ExpertProfileResponse;
+ import com.aitasker.expert.entity.ExpertProfile;
+@@ -23,14 +24,14 @@ public class ExpertServiceImpl implements ExpertService {
+     @Override
+     public ExpertProfileResponse getMyProfile(Long currentUserId) {
+         ExpertProfile profile = expertRepository.findByUserId(currentUserId)
+-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ chuyên gia!"));
++                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ chuyên gia!"));
+         return expertMapper.toDto(profile);
+     }
+ 
+     @Override
+     public ExpertProfileResponse updateProfile(Long currentUserId, UpdateExpertProfileRequest request) {
+         ExpertProfile profile = expertRepository.findByUserId(currentUserId)
+-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ chuyên gia!"));
++                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ chuyên gia!"));
+         
+         // Cập nhật dữ liệu từ Request lên Entity dữ liệu thật
+         profile.setFullName(request.getFullName());
+diff --git a/aitasker/src/main/java/com/aitasker/expert/service/impl/PortfolioServiceImpl.java b/aitasker/src/main/java/com/aitasker/expert/service/impl/PortfolioServiceImpl.java
+index 2150422..16b369a 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/service/impl/PortfolioServiceImpl.java
++++ b/aitasker/src/main/java/com/aitasker/expert/service/impl/PortfolioServiceImpl.java
+@@ -3,7 +3,8 @@ package com.aitasker.expert.service.impl;
+ import com.aitasker.expert.dto.request.CreatePortfolioRequest;
+ import com.aitasker.expert.dto.response.PortfolioResponse;
+ import com.aitasker.expert.entity.Portfolio;
+-import com.aitasker.expert.exception.ExpertNotFoundException;
++import com.aitasker.exception.ForbiddenException;
++import com.aitasker.exception.ResourceNotFoundException;
+ import com.aitasker.expert.repository.PortfolioRepository;
+ import com.aitasker.expert.service.PortfolioService;
+ import com.aitasker.user.entity.User;
+@@ -29,7 +30,7 @@ public class PortfolioServiceImpl implements PortfolioService {
+     public PortfolioResponse addPortfolio(Long currentUserId, CreatePortfolioRequest request) {
+ 
+         User expert = userRepository.findById(currentUserId)
+-                .orElseThrow(() -> new ExpertNotFoundException("Không tìm thấy chuyên gia!"));
++                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chuyên gia!"));
+ 
+         Portfolio portfolio = new Portfolio();
+         portfolio.setExpert(expert);
+@@ -56,10 +57,12 @@ public class PortfolioServiceImpl implements PortfolioService {
+ 
+         Portfolio portfolio = portfolioRepository.findById(portfolioId)
+                 .orElseThrow(() ->
+-                        new RuntimeException("Không tìm thấy dự án Portfolio cần xóa!"));
++                        new ResourceNotFoundException("Không tìm thấy dự án Portfolio cần xóa!"));
+ 
+         if (!portfolio.getExpert().getId().equals(currentUserId)) {
+-            throw new ExpertNotFoundException(
++            // Trước đây ném ExpertNotFoundException (không có handler riêng
++            // -> rơi vào nhánh 500 chung) dù bản chất đây là lỗi 403 Forbidden.
++            throw new ForbiddenException(
+                     "Bạn không có quyền xóa Portfolio của người khác!");
+         }
+ 
+diff --git a/aitasker/src/main/java/com/aitasker/expert/service/impl/ServicePackageServiceImpl.java b/aitasker/src/main/java/com/aitasker/expert/service/impl/ServicePackageServiceImpl.java
+index 97fc916..0b09d45 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/service/impl/ServicePackageServiceImpl.java
++++ b/aitasker/src/main/java/com/aitasker/expert/service/impl/ServicePackageServiceImpl.java
+@@ -1,9 +1,9 @@
+ package com.aitasker.expert.service.impl;
+ 
++import com.aitasker.exception.ForbiddenException;
+ import com.aitasker.expert.dto.request.CreateServicePackageRequest;
+ import com.aitasker.expert.dto.response.ServicePackageResponse;
+ import com.aitasker.expert.entity.ServicePackage;
+-import com.aitasker.expert.exception.ExpertNotFoundException;
+ import com.aitasker.expert.repository.ServicePackageRepository;
+ import com.aitasker.expert.service.ServicePackageService;
+ import org.springframework.stereotype.Service;
+@@ -55,7 +55,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
+         
+         // Kiểm tra quyền sở hữu (Security Integration)
+         if (!pack.getExpertId().equals(currentUserId)) {
+-            throw new ExpertNotFoundException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
++            // Trước đây ném ExpertNotFoundException (không có handler riêng
++            // -> rơi vào nhánh 500 chung) dù bản chất đây là lỗi 403 Forbidden.
++            throw new ForbiddenException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
+         }
+ 
+         pack.setPackageName(request.getPackageName());
+@@ -73,7 +75,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
+         
+         // Kiểm tra quyền sở hữu (Security Integration)
+         if (!pack.getExpertId().equals(currentUserId)) {
+-            throw new ExpertNotFoundException("Bạn không có quyền xóa gói dịch vụ của người khác!");
++            throw new ForbiddenException("Bạn không có quyền xóa gói dịch vụ của người khác!");
+         }
+         packageRepository.deleteById(packageId);
+     }
+diff --git a/aitasker/src/main/java/com/aitasker/job/dto/JobPostRequest.java b/aitasker/src/main/java/com/aitasker/job/dto/JobPostRequest.java
+index 807bbd9..3f20c8b 100644
+--- a/aitasker/src/main/java/com/aitasker/job/dto/JobPostRequest.java
++++ b/aitasker/src/main/java/com/aitasker/job/dto/JobPostRequest.java
+@@ -3,6 +3,8 @@ package com.aitasker.job.dto;
+ import com.aitasker.common.enums.JobStatus;
+ import lombok.Setter;
+ import lombok.Getter;
++
++import java.math.BigDecimal;
+ import java.time.LocalDate;
+ 
+ @Getter
+@@ -10,7 +12,9 @@ import java.time.LocalDate;
+ public class JobPostRequest {
+     private String title;
+     private String description;
+-    private Double budget;
++    // Double -> BigDecimal: khớp kiểu với JobPost.budget, tránh phải convert
++    // qua lại và mất độ chính xác khi tính tiền.
++    private BigDecimal budget;
+     private LocalDate deadline;
+     private String requiredSkills;
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/job/dto/JobPostResponse.java b/aitasker/src/main/java/com/aitasker/job/dto/JobPostResponse.java
+index b9a8cd3..0a3e64d 100644
+--- a/aitasker/src/main/java/com/aitasker/job/dto/JobPostResponse.java
++++ b/aitasker/src/main/java/com/aitasker/job/dto/JobPostResponse.java
+@@ -4,6 +4,7 @@ import com.aitasker.common.enums.JobStatus;
+ import lombok.Getter;
+ import lombok.Setter;
+ 
++import java.math.BigDecimal;
+ import java.time.LocalDate;
+ 
+ @Getter
+@@ -12,10 +13,11 @@ public class JobPostResponse {
+     private Long id;
+     private String title;
+     private String description;
+-    private Double budget;
++    private BigDecimal budget;
+     private LocalDate deadline;
+     private String requiredSkills;
+     private JobStatus status;
+-    private Long ClientId;
++    // ClientId -> clientId: theo đúng quy ước đặt tên field Java (camelCase)
++    private Long clientId;
+     private String clientName;
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/job/dto/JobSearchRequest.java b/aitasker/src/main/java/com/aitasker/job/dto/JobSearchRequest.java
+index 9554915..5b34670 100644
+--- a/aitasker/src/main/java/com/aitasker/job/dto/JobSearchRequest.java
++++ b/aitasker/src/main/java/com/aitasker/job/dto/JobSearchRequest.java
+@@ -4,12 +4,14 @@ import com.aitasker.common.enums.JobStatus;
+ import lombok.Getter;
+ import lombok.Setter;
+ 
++import java.math.BigDecimal;
++
+ @Getter
+ @Setter
+ public class JobSearchRequest {
+     private String keyword;
+     private String skills;
+-    private Double minBudget;
+-    private Double maxBudget;
++    private BigDecimal minBudget;
++    private BigDecimal maxBudget;
+     private JobStatus status;
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/job/repository/JobPostRepository.java b/aitasker/src/main/java/com/aitasker/job/repository/JobPostRepository.java
+index ec84966..990c374 100644
+--- a/aitasker/src/main/java/com/aitasker/job/repository/JobPostRepository.java
++++ b/aitasker/src/main/java/com/aitasker/job/repository/JobPostRepository.java
+@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.data.jpa.repository.Query;
+ import org.springframework.data.repository.query.Param;
+ 
++import java.math.BigDecimal;
+ import java.util.List;
+ 
+ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
+@@ -24,8 +25,8 @@ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
+     List<JobPost> search(
+       @Param("keyword") String keyword,
+       @Param("skills") String skills,
+-      @Param("minBudget") Double minBudget,
+-      @Param("maxBudget") Double maxBudget,
++      @Param("minBudget") BigDecimal minBudget,
++      @Param("maxBudget") BigDecimal maxBudget,
+       @Param("status") JobStatus status
+     );
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/job/service/JobService.java b/aitasker/src/main/java/com/aitasker/job/service/JobService.java
+index 8958988..cff9a4d 100644
+--- a/aitasker/src/main/java/com/aitasker/job/service/JobService.java
++++ b/aitasker/src/main/java/com/aitasker/job/service/JobService.java
+@@ -16,7 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
+ import org.springframework.stereotype.Service;
+ import org.springframework.transaction.annotation.Transactional;
+ 
+-import java.math.BigDecimal;
+ import java.util.List;
+ 
+ @Service
+@@ -33,10 +32,7 @@ public class JobService{
+         JobPost job = new JobPost();
+         job.setTitle(request.getTitle());
+         job.setDescription(request.getDescription());
+-        job.setBudget(request.getBudget() != null ? BigDecimal.valueOf(request.getBudget()) : null);
+-        job.setDeadline(request.getDeadline());
+-        job.setRequiredSkills(request.getRequiredSkills());
+-        job.setStatus(JobStatus.OPEN);
++        job.setBudget(request.getBudget());
+         job.setClient(client);
+         return toResponse(jobPostRepository.save(job));
+     }
+@@ -54,7 +50,7 @@ public class JobService{
+         }
+         job.setTitle(request.getTitle());
+         job.setDescription(request.getDescription());
+-        job.setBudget(request.getBudget() != null ? BigDecimal.valueOf(request.getBudget()) : null);
++        job.setBudget(request.getBudget());
+         job.setDeadline(request.getDeadline());
+         job.setRequiredSkills(request.getRequiredSkills());
+ 
+@@ -101,7 +97,7 @@ public class JobService{
+         res.setId(job.getId());
+         res.setTitle(job.getTitle());
+         res.setDescription(job.getDescription());
+-        res.setBudget(job.getBudget() != null ? job.getBudget().doubleValue() : null);
++        res.setBudget(job.getBudget());
+         res.setDeadline(job.getDeadline());
+         res.setRequiredSkills(job.getRequiredSkills());
+         res.setStatus(job.getStatus());
+diff --git a/aitasker/src/main/java/com/aitasker/message/controller/ChatWebSocketController.java b/aitasker/src/main/java/com/aitasker/message/controller/ChatWebSocketController.java
+index 919a116..220622d 100644
+--- a/aitasker/src/main/java/com/aitasker/message/controller/ChatWebSocketController.java
++++ b/aitasker/src/main/java/com/aitasker/message/controller/ChatWebSocketController.java
+@@ -1,7 +1,7 @@
+ package com.aitasker.message.controller;
+ 
+ import com.aitasker.message.dto.ChatMessageRequest;
+-import com.aitasker.message.entity.Message;
++import com.aitasker.message.dto.MessageResponse;
+ import com.aitasker.message.service.MessageService;
+ import com.aitasker.security.userdetails.CustomUserDetails;
+ import com.aitasker.user.entity.User;
+@@ -24,7 +24,7 @@ public class ChatWebSocketController {
+     public void sendMessage(ChatMessageRequest request, Principal principal) {
+         User sender = getCurrentUser(principal);
+ 
+-        Message savedMessage = messageService.saveMessage(request, sender);
++        MessageResponse savedMessage = messageService.saveMessage(request, sender);
+ 
+         messagingTemplate.convertAndSend(
+                 "/topic/projects/" + request.getProjectId(),
+diff --git a/aitasker/src/main/java/com/aitasker/message/controller/MessageController.java b/aitasker/src/main/java/com/aitasker/message/controller/MessageController.java
+index a5f7871..a3b87dc 100644
+--- a/aitasker/src/main/java/com/aitasker/message/controller/MessageController.java
++++ b/aitasker/src/main/java/com/aitasker/message/controller/MessageController.java
+@@ -1,6 +1,6 @@
+ package com.aitasker.message.controller;
+ 
+-import com.aitasker.message.entity.Message;
++import com.aitasker.message.dto.MessageResponse;
+ import com.aitasker.message.service.MessageService;
+ import com.aitasker.security.userdetails.CustomUserDetails;
+ import com.aitasker.user.entity.User;
+@@ -22,7 +22,7 @@ public class MessageController {
+     private final MessageService messageService;
+ 
+     @GetMapping("/project/{projectId}")
+-    public ResponseEntity<List<Message>> getProjectMessages(
++    public ResponseEntity<List<MessageResponse>> getProjectMessages(
+             @PathVariable Long projectId,
+             Authentication authentication
+     ) {
+diff --git a/aitasker/src/main/java/com/aitasker/message/dto/MessageResponse.java b/aitasker/src/main/java/com/aitasker/message/dto/MessageResponse.java
+new file mode 100644
+index 0000000..f7b99dd
+--- /dev/null
++++ b/aitasker/src/main/java/com/aitasker/message/dto/MessageResponse.java
+@@ -0,0 +1,40 @@
++package com.aitasker.message.dto;
++
++import com.aitasker.message.entity.Message;
++import lombok.AllArgsConstructor;
++import lombok.Getter;
++import lombok.NoArgsConstructor;
++
++import java.time.LocalDateTime;
++
++/**
++ * DTO trả về cho client thay vì trả thẳng entity Message (tránh serialize
++ * toàn bộ User sender/receiver — kể cả khi password đã @JsonIgnore, DTO vẫn
++ * là cách kiểm soát tường minh dữ liệu nào được lộ ra ngoài).
++ */
++@Getter
++@NoArgsConstructor
++@AllArgsConstructor
++public class MessageResponse {
++    private Long id;
++    private Long projectId;
++    private Long senderId;
++    private String senderName;
++    private Long receiverId;
++    private String content;
++    private LocalDateTime sentAt;
++    private Boolean isRead;
++
++    public static MessageResponse from(Message message) {
++        return new MessageResponse(
++                message.getId(),
++                message.getProject() != null ? message.getProject().getId() : null,
++                message.getSender() != null ? message.getSender().getId() : null,
++                message.getSender() != null ? message.getSender().getName() : null,
++                message.getReceiver() != null ? message.getReceiver().getId() : null,
++                message.getContent(),
++                message.getSentAt(),
++                message.getIsRead()
++        );
++    }
++}
+diff --git a/aitasker/src/main/java/com/aitasker/message/entity/Message.java b/aitasker/src/main/java/com/aitasker/message/entity/Message.java
+index f8e1f93..7c2d376 100644
+--- a/aitasker/src/main/java/com/aitasker/message/entity/Message.java
++++ b/aitasker/src/main/java/com/aitasker/message/entity/Message.java
+@@ -1,5 +1,7 @@
+ package com.aitasker.message.entity;
+ import com.aitasker.common.entity.BaseEntity;
++import com.aitasker.project.entity.Project;
++import com.aitasker.user.entity.User;
+ import jakarta.persistence.*;
+ import lombok.AllArgsConstructor;
+ import lombok.Builder;
+@@ -9,6 +11,12 @@ import lombok.Setter;
+ 
+ import java.time.LocalDateTime;
+ 
++/**
++ * Trước bản vá: projectId/senderId/receiverId là Long thô, không có ràng
++ * buộc khóa ngoại ở tầng JPA/DB -> có thể insert Message trỏ tới project
++ * hoặc user không tồn tại, và không join được trực tiếp trong query.
++ * Sau bản vá: dùng @ManyToOne để Hibernate tạo FK thật + validate tồn tại.
++ */
+ @Entity
+ @Table(name = "messages")
+ @Getter
+@@ -17,9 +25,21 @@ import java.time.LocalDateTime;
+ @AllArgsConstructor
+ @Builder
+ public class Message extends BaseEntity {
+-    private Long projectId;
+-    private Long senderId;
+-    private Long receiverId;
++
++    @ManyToOne(fetch = FetchType.LAZY)
++    @JoinColumn(name = "project_id", nullable = false,
++            foreignKey = @ForeignKey(name = "fk_message_project"))
++    private Project project;
++
++    @ManyToOne(fetch = FetchType.LAZY)
++    @JoinColumn(name = "sender_id", nullable = false,
++            foreignKey = @ForeignKey(name = "fk_message_sender"))
++    private User sender;
++
++    @ManyToOne(fetch = FetchType.LAZY)
++    @JoinColumn(name = "receiver_id", nullable = false,
++            foreignKey = @ForeignKey(name = "fk_message_receiver"))
++    private User receiver;
+ 
+     @Column(columnDefinition = "TEXT")
+     private String content;
+diff --git a/aitasker/src/main/java/com/aitasker/message/repository/MessageRepository.java b/aitasker/src/main/java/com/aitasker/message/repository/MessageRepository.java
+index 44debd0..10fdf5f 100644
+--- a/aitasker/src/main/java/com/aitasker/message/repository/MessageRepository.java
++++ b/aitasker/src/main/java/com/aitasker/message/repository/MessageRepository.java
+@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
+ import java.util.List;
+ 
+ public interface MessageRepository extends JpaRepository<Message, Long> {
+-    List<Message> findByProjectIdOrderBySentAtAsc(Long projectId);
++    List<Message> findByProject_IdOrderBySentAtAsc(Long projectId);
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/message/service/MessageService.java b/aitasker/src/main/java/com/aitasker/message/service/MessageService.java
+index 538e1ac..ab0eb17 100644
+--- a/aitasker/src/main/java/com/aitasker/message/service/MessageService.java
++++ b/aitasker/src/main/java/com/aitasker/message/service/MessageService.java
+@@ -1,10 +1,15 @@
+ package com.aitasker.message.service;
+ 
++import com.aitasker.exception.ResourceNotFoundException;
+ import com.aitasker.message.dto.ChatMessageRequest;
++import com.aitasker.message.dto.MessageResponse;
+ import com.aitasker.message.entity.Message;
+ import com.aitasker.message.repository.MessageRepository;
++import com.aitasker.project.entity.Project;
++import com.aitasker.project.repository.ProjectRepository;
+ import com.aitasker.security.ProjectSecurityService;
+ import com.aitasker.user.entity.User;
++import com.aitasker.user.repository.UserRepository;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.stereotype.Service;
+ 
+@@ -16,26 +21,37 @@ import java.util.List;
+ public class MessageService {
+ 
+     private final MessageRepository messageRepository;
++    private final ProjectRepository projectRepository;
++    private final UserRepository userRepository;
+     private final ProjectSecurityService projectSecurityService;
+ 
+-    public List<Message> getMessagesByProject(Long projectId, User currentUser) {
++    public List<MessageResponse> getMessagesByProject(Long projectId, User currentUser) {
+         projectSecurityService.checkCanAccessProject(projectId, currentUser);
+ 
+-        return messageRepository.findByProjectIdOrderBySentAtAsc(projectId);
++        return messageRepository.findByProject_IdOrderBySentAtAsc(projectId)
++                .stream()
++                .map(MessageResponse::from)
++                .toList();
+     }
+ 
+-    public Message saveMessage(ChatMessageRequest request, User sender) {
++    public MessageResponse saveMessage(ChatMessageRequest request, User sender) {
+         projectSecurityService.checkCanAccessProject(request.getProjectId(), sender);
+ 
++        Project project = projectRepository.findById(request.getProjectId())
++                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Project"));
++
++        User receiver = userRepository.findById(request.getReceiverId())
++                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người nhận"));
++
+         Message message = Message.builder()
+-                .projectId(request.getProjectId())
+-                .senderId(sender.getId())
+-                .receiverId(request.getReceiverId())
++                .project(project)
++                .sender(sender)
++                .receiver(receiver)
+                 .content(request.getContent())
+                 .sentAt(LocalDateTime.now())
+                 .isRead(false)
+                 .build();
+ 
+-        return messageRepository.save(message);
++        return MessageResponse.from(messageRepository.save(message));
+     }
+ }
+diff --git a/aitasker/src/main/java/com/aitasker/notification/service/NotificationService.java b/aitasker/src/main/java/com/aitasker/notification/service/NotificationService.java
+index 23ac6f7..4b63c3b 100644
+--- a/aitasker/src/main/java/com/aitasker/notification/service/NotificationService.java
++++ b/aitasker/src/main/java/com/aitasker/notification/service/NotificationService.java
+@@ -1,5 +1,6 @@
+ package com.aitasker.notification.service;
+ 
++import com.aitasker.exception.ResourceNotFoundException;
+ import com.aitasker.notification.entity.Notification;
+ import com.aitasker.notification.repository.NotificationRepository;
+ import com.aitasker.user.entity.User;
+@@ -31,7 +32,7 @@ public class NotificationService {
+ 
+         User recipient = userRepository.findById(recipientId)
+                 .orElseThrow(() ->
+-                        new RuntimeException("Recipient not found"));
++                        new ResourceNotFoundException("Recipient not found"));
+ 
+         Notification notification = Notification.builder()
+                 .recipient(recipient)
+@@ -71,7 +72,7 @@ public class NotificationService {
+         Notification notification =
+                 notificationRepository.findById(id)
+                         .orElseThrow(() ->
+-                                new RuntimeException("Notification not found"));
++                                new ResourceNotFoundException("Notification not found"));
+ 
+         if (!notification.getRecipient().getId().equals(user.getId())) {
+ 
+diff --git a/aitasker/src/main/java/com/aitasker/payment/entity/Payment.java b/aitasker/src/main/java/com/aitasker/payment/entity/Payment.java
+index 20b6231..2b0404f 100644
+--- a/aitasker/src/main/java/com/aitasker/payment/entity/Payment.java
++++ b/aitasker/src/main/java/com/aitasker/payment/entity/Payment.java
+@@ -1,12 +1,12 @@
+ package com.aitasker.payment.entity;
+ 
++import com.aitasker.common.entity.BaseEntity;
+ import com.aitasker.milestone.entity.Milestone;
+ import com.aitasker.payment.enums.PaymentStatus;
+ import com.aitasker.project.entity.Project;
+ import jakarta.persistence.*;
+ import lombok.*;
+ import java.math.BigDecimal;
+-import java.time.LocalDateTime;
+ 
+ @Entity
+ @Table(name = "payments")
+@@ -14,11 +14,9 @@ import java.time.LocalDateTime;
+ @NoArgsConstructor
+ @AllArgsConstructor
+ @Builder
+-public class Payment {
+-
+-    @Id
+-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+-    private Long id;
++// Kế thừa BaseEntity thay vì tự khai báo lại id/createdAt/updatedAt/@PrePersist/@PreUpdate
++// (trước đây bị lặp code y hệt BaseEntity, không đồng nhất với các entity khác trong hệ thống).
++public class Payment extends BaseEntity {
+ 
+     // Quan hệ với Project (bắt buộc)
+     @ManyToOne(fetch = FetchType.LAZY)
+@@ -42,18 +40,4 @@ public class Payment {
+     // Mã giao dịch tham chiếu (để tra cứu)
+     @Column(name = "transaction_ref")
+     private String transactionRef;
+-
+-    private LocalDateTime createdAt;
+-    private LocalDateTime updatedAt;
+-
+-    @PrePersist
+-    public void prePersist() {
+-        createdAt = LocalDateTime.now();
+-        updatedAt = LocalDateTime.now();
+-    }
+-
+-    @PreUpdate
+-    public void preUpdate() {
+-        updatedAt = LocalDateTime.now();
+-    }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/payment/entity/Transaction.java b/aitasker/src/main/java/com/aitasker/payment/entity/Transaction.java
+index 6183007..4c4165e 100644
+--- a/aitasker/src/main/java/com/aitasker/payment/entity/Transaction.java
++++ b/aitasker/src/main/java/com/aitasker/payment/entity/Transaction.java
+@@ -1,11 +1,11 @@
+ // src/main/java/com/aitasker/payment/entity/Transaction.java
+ package com.aitasker.payment.entity;
+ 
++import com.aitasker.common.entity.BaseEntity;
+ import com.aitasker.payment.enums.TransactionType;
+ import jakarta.persistence.*;
+ import lombok.*;
+ import java.math.BigDecimal;
+-import java.time.LocalDateTime;
+ 
+ @Entity
+ @Table(name = "transactions")
+@@ -13,11 +13,7 @@ import java.time.LocalDateTime;
+ @NoArgsConstructor
+ @AllArgsConstructor
+ @Builder
+-public class Transaction {
+-
+-    @Id
+-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+-    private Long id;
++public class Transaction extends BaseEntity {
+ 
+     // Mỗi Transaction thuộc về một Payment
+     @ManyToOne(fetch = FetchType.LAZY)
+@@ -32,12 +28,4 @@ public class Transaction {
+     private BigDecimal amount;
+ 
+     private String description;
+-
+-    @Column(nullable = false)
+-    private LocalDateTime createdAt;
+-
+-    @PrePersist
+-    public void prePersist() {
+-        createdAt = LocalDateTime.now();
+-    }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/payment/entity/Withdrawal.java b/aitasker/src/main/java/com/aitasker/payment/entity/Withdrawal.java
+index 11fabaf..a782862 100644
+--- a/aitasker/src/main/java/com/aitasker/payment/entity/Withdrawal.java
++++ b/aitasker/src/main/java/com/aitasker/payment/entity/Withdrawal.java
+@@ -1,6 +1,7 @@
+ // src/main/java/com/aitasker/payment/entity/Withdrawal.java
+ package com.aitasker.payment.entity;
+ 
++import com.aitasker.common.entity.BaseEntity;
+ import com.aitasker.user.entity.User;
+ import com.aitasker.payment.enums.WithdrawalStatus;
+ import jakarta.persistence.*;
+@@ -14,11 +15,7 @@ import java.time.LocalDateTime;
+ @NoArgsConstructor
+ @AllArgsConstructor
+ @Builder
+-public class Withdrawal {
+-
+-    @Id
+-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+-    private Long id;
++public class Withdrawal extends BaseEntity {
+ 
+     // Expert là người rút tiền
+     @ManyToOne(fetch = FetchType.LAZY)
+@@ -37,8 +34,10 @@ public class Withdrawal {
+ 
+     private LocalDateTime processedAt; // null cho đến khi Admin duyệt
+ 
++    // Đặt tên khác với onCreate() của BaseEntity (đã tự xử lý id/createdAt/updatedAt)
++    // để cả hai @PrePersist cùng được JPA gọi khi insert.
+     @PrePersist
+-    public void prePersist() {
++    public void onCreateWithdrawal() {
+         requestedAt = LocalDateTime.now();
+         status = WithdrawalStatus.PENDING;
+     }
+diff --git a/aitasker/src/main/java/com/aitasker/proposal/dto/response/ProposalResponseDTO.java b/aitasker/src/main/java/com/aitasker/proposal/dto/response/ProposalResponseDTO.java
+index 8a5bd3e..494ac23 100644
+--- a/aitasker/src/main/java/com/aitasker/proposal/dto/response/ProposalResponseDTO.java
++++ b/aitasker/src/main/java/com/aitasker/proposal/dto/response/ProposalResponseDTO.java
+@@ -6,6 +6,7 @@ import lombok.Builder;
+ import lombok.Getter;
+ import lombok.Setter;
+ 
++import java.math.BigDecimal;
+ import java.time.LocalDateTime;
+ 
+ @Getter
+@@ -17,7 +18,7 @@ public class ProposalResponseDTO {
+     private String jobTitle;
+     private Long expertId;
+     private String expertName;
+-    private Double bidAmount;
++    private BigDecimal bidAmount;
+     private String coverLetter;
+     private ProposalStatus status;
+     private LocalDateTime submittedAt;
+diff --git a/aitasker/src/main/java/com/aitasker/proposal/service/ProposalService.java b/aitasker/src/main/java/com/aitasker/proposal/service/ProposalService.java
+index e344256..d191e55 100644
+--- a/aitasker/src/main/java/com/aitasker/proposal/service/ProposalService.java
++++ b/aitasker/src/main/java/com/aitasker/proposal/service/ProposalService.java
+@@ -70,7 +70,13 @@ public class ProposalService {
+ 
+         proposal = proposalRepository.save(proposal);
+ 
+-        // Notification disabled: NotificationService API differs in this project
++        // Thông báo cho Client biết có đề xuất mới cho Job của họ
++        notificationService.createNotification(
++                job.getClient().getId(),
++                "Có đề xuất mới",
++                expert.getName() + " vừa gửi đề xuất cho công việc \"" + job.getTitle() + "\" của bạn.",
++                "PROPOSAL_CREATED"
++        );
+ 
+         return mapToDTO(proposal);
+     }
+@@ -114,7 +120,13 @@ public class ProposalService {
+ 
+         projectService.createProjectFromProposal(proposal);
+ 
+-        // Notification disabled: NotificationService API differs in this project
++        // Thông báo cho Expert biết đề xuất của họ đã được chấp nhận
++        notificationService.createNotification(
++                proposal.getExpert().getId(),
++                "Đề xuất được chấp nhận",
++                "Đề xuất của bạn cho công việc \"" + proposal.getJob().getTitle() + "\" đã được chấp nhận.",
++                "PROPOSAL_ACCEPTED"
++        );
+     }
+ 
+     // 4. KHÁCH HÀNG TỪ CHỐI ĐỀ XUẤT
+@@ -132,7 +144,13 @@ public class ProposalService {
+         proposal.setStatus(ProposalStatus.REJECTED);
+         proposalRepository.save(proposal);
+ 
+-        // Notification disabled: NotificationService API differs in this project
++        // Thông báo cho Expert biết đề xuất của họ bị từ chối
++        notificationService.createNotification(
++                proposal.getExpert().getId(),
++                "Đề xuất bị từ chối",
++                "Đề xuất của bạn cho công việc \"" + proposal.getJob().getTitle() + "\" đã bị từ chối.",
++                "PROPOSAL_REJECTED"
++        );
+     }
+ 
+     // 5. CHUYÊN GIA RÚT LẠI ĐỀ XUẤT
+@@ -150,7 +168,13 @@ public class ProposalService {
+         proposal.setStatus(ProposalStatus.WITHDRAWN);
+         proposalRepository.save(proposal);
+ 
+-        // Notification disabled: NotificationService API differs in this project
++        // Thông báo cho Client biết Expert đã rút lại đề xuất
++        notificationService.createNotification(
++                proposal.getJob().getClient().getId(),
++                "Đề xuất bị rút lại",
++                proposal.getExpert().getName() + " đã rút lại đề xuất cho công việc \"" + proposal.getJob().getTitle() + "\".",
++                "PROPOSAL_WITHDRAWN"
++        );
+     }
+ 
+     // Hàm phụ trợ map Entity sang DTO
+@@ -166,7 +190,7 @@ public class ProposalService {
+                 .jobTitle(proposal.getJob().getTitle())
+                 .expertId(proposal.getExpert().getId())
+                 .expertName(proposal.getExpert().getName())
+-                .bidAmount(proposal.getBidAmount() != null ? proposal.getBidAmount().doubleValue() : null)
++                .bidAmount(proposal.getBidAmount())
+                 .coverLetter(proposal.getCoverLetter())
+                 .status(proposal.getStatus())
+                 .submittedAt(proposal.getSubmittedAt())

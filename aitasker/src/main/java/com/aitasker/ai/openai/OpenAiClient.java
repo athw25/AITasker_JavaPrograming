@@ -1,5 +1,5 @@
+// OpenAiClient.java
 package com.aitasker.ai.openai;
-
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
@@ -10,7 +10,7 @@ public class OpenAiClient {
 
     private final RestTemplate restTemplate;
     // Thay thế bằng API Key OpenAI thực tế của bạn hoặc nhóm
-    private final String apiKey = "YOUR_OPENAI_API_KEY_HERE"; 
+    private final String apiKey = "YOUR_OPENAI_API_KEY_HERE";
     private final String apiUrl = "https://api.openai.com/v1/chat/completions";
 
     public OpenAiClient(RestTemplate restTemplate) {
@@ -30,7 +30,7 @@ public class OpenAiClient {
             List<Map<String, String>> messages = new ArrayList<>();
             messages.add(Map.of("role", "system", "content", systemPrompt));
             messages.add(Map.of("role", "user", "content", userPrompt));
-            
+
             requestBody.put("messages", messages);      // Đổi .set thành .put
             requestBody.put("temperature", 0.7);        // Đổi .set thành .put
 
@@ -40,16 +40,16 @@ public class OpenAiClient {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 // 1. Chỉ định rõ List chứa các Map
                 List<?> choices = (List<?>) response.getBody().get("choices");
-                
+
                 // 2. Chỉ định rõ Map nhận vào cặp dữ liệu String, Object
                 Map<?, ?> firstChoice = (Map<?, ?>) choices.get(0);
                 Map<?, ?> message = (Map<?, ?>) firstChoice.get("message");
-                
+
                 return (String) message.get("content");
             } else{
                 throw new RuntimeException("Gọi API OpenAI thất bại, HTTP Status: " + response.getStatusCode());
             }
-            
+
         } catch (Exception e) {
             // Khi không có API Key thực tế hoặc lỗi mạng, trả về chuỗi JSON giả lập đúng cấu trúc để tránh crash hệ thống
             if (systemPrompt.contains("Job Assistant")) {
