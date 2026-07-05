@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -140,6 +141,16 @@ public class MilestoneServiceImpl implements MilestoneService {
                 && project.getMilestones().stream().allMatch(item -> item.getStatus() == MilestoneStatus.PAID);
         if (allPaid) project.setStatus(ProjectStatus.COMPLETED);
         return milestoneMapper.toResponse(milestone);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MilestoneResponse> getMilestonesByProject(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ProjectNotFoundException(projectId));
+        return milestoneRepository.findByProjectIdOrderByIdAsc(projectId).stream()
+                .map(milestoneMapper::toResponse)
+                .toList();
     }
 
     private Milestone findLocked(Long id) {

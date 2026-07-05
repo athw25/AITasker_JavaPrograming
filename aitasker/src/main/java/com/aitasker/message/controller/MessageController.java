@@ -1,6 +1,6 @@
 package com.aitasker.message.controller;
 
-import com.aitasker.message.entity.Message;
+import com.aitasker.message.dto.MessageResponse;
 import com.aitasker.message.service.MessageService;
 import com.aitasker.security.userdetails.CustomUserDetails;
 import com.aitasker.user.entity.User;
@@ -22,7 +22,7 @@ public class MessageController {
     private final MessageService messageService;
 
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<List<Message>> getProjectMessages(
+    public ResponseEntity<List<MessageResponse>> getProjectMessages(
             @PathVariable Long projectId,
             Authentication authentication
     ) {

@@ -5,6 +5,7 @@ import com.aitasker.milestone.dto.request.SubmitMilestoneRequest;
 import com.aitasker.milestone.dto.request.UpdateMilestoneRequest;
 import com.aitasker.milestone.dto.response.MilestoneResponse;
 import com.aitasker.user.entity.User;
+import java.util.List;
 
 /** Milestone lifecycle use cases. */
 public interface MilestoneService {
@@ -14,4 +15,5 @@ public interface MilestoneService {
     MilestoneResponse approveMilestone(Long id, User currentUser);
     MilestoneResponse rejectMilestone(Long id, String reason, User currentUser);
     MilestoneResponse releasePayment(Long id, User currentUser);
+    List<MilestoneResponse> getMilestonesByProject(Long projectId);
 }

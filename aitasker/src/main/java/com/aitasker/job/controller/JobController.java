@@ -32,6 +32,13 @@ public class JobController {
     public ResponseEntity<List<JobPostResponse>> getAll(){
         return ResponseEntity.ok(jobService.getAll());
     }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasRole('CLIENT')")
+    @Operation(summary = "Get jobs created by the authenticated client")
+    public ResponseEntity<List<JobPostResponse>> getMyJobs() {
+        return ResponseEntity.ok(jobService.getMyJobs());
+    }
     @GetMapping("/{id}")
     @Operation(summary = "Get job post by ID")
     public ResponseEntity<JobPostResponse> getById(@PathVariable Long id) {

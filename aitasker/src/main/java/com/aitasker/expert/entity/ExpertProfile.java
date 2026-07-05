@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 /**
  * Hồ sơ gốc của Chuyên gia AI lưu dưới Database (chứa ghi chú nội bộ).
  */
@@ -34,7 +36,10 @@ public class ExpertProfile extends BaseEntity {
     private String title;             // Ví dụ: Senior AI Engineer
     private String skills;            // Ví dụ: "Python, PyTorch, LLM"
     private int experienceYears;
-    private double hourlyRate;
+
+    // double -> BigDecimal: tránh sai số dấu phẩy động khi tính tiền công.
+    @Column(precision = 15, scale = 2)
+    private BigDecimal hourlyRate;
     @Column(columnDefinition = "TEXT")
     private String internalNotes;     // Thông tin ẩn bí mật của hệ thống
 }

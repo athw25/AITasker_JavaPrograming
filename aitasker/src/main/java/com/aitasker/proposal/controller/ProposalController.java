@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import com.aitasker.security.userdetails.CustomUserDetails;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/proposals")
@@ -41,6 +42,12 @@ public class ProposalController {
             @RequestParam(defaultValue = "10") int size) {
         PageResponse<ProposalResponseDTO> response = proposalService.getProposalsByJob(jobId, page, size);
         return ApiResponse.success("Lấy danh sách đề xuất thành công", response);
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<List<ProposalResponseDTO>> getMyProposals(Authentication authentication) {
+        Long expertId = getCurrentUserId(authentication);
+        return ApiResponse.success("Lấy danh sách đề xuất của chuyên gia", proposalService.getMyProposals(expertId));
     }
 
     // API 3: Client chấp nhận đề xuất

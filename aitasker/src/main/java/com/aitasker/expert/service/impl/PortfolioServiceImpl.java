@@ -3,7 +3,8 @@ package com.aitasker.expert.service.impl;
 import com.aitasker.expert.dto.request.CreatePortfolioRequest;
 import com.aitasker.expert.dto.response.PortfolioResponse;
 import com.aitasker.expert.entity.Portfolio;
-import com.aitasker.expert.exception.ExpertNotFoundException;
+import com.aitasker.exception.ForbiddenException;
+import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.expert.repository.PortfolioRepository;
 import com.aitasker.expert.service.PortfolioService;
 import com.aitasker.user.entity.User;
@@ -29,7 +30,7 @@ public class PortfolioServiceImpl implements PortfolioService {
     public PortfolioResponse addPortfolio(Long currentUserId, CreatePortfolioRequest request) {
 
         User expert = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new ExpertNotFoundException("Không tìm thấy chuyên gia!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy chuyên gia!"));
 
         Portfolio portfolio = new Portfolio();
         portfolio.setExpert(expert);
@@ -56,10 +57,12 @@ public class PortfolioServiceImpl implements PortfolioService {
 
         Portfolio portfolio = portfolioRepository.findById(portfolioId)
                 .orElseThrow(() ->
-                        new RuntimeException("Không tìm thấy dự án Portfolio cần xóa!"));
+                        new ResourceNotFoundException("Không tìm thấy dự án Portfolio cần xóa!"));
 
         if (!portfolio.getExpert().getId().equals(currentUserId)) {
-            throw new ExpertNotFoundException(
+            // Trước đây ném ExpertNotFoundException (không có handler riêng
+            // -> rơi vào nhánh 500 chung) dù bản chất đây là lỗi 403 Forbidden.
+            throw new ForbiddenException(
                     "Bạn không có quyền xóa Portfolio của người khác!");
         }
 

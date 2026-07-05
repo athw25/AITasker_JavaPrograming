@@ -5,11 +5,13 @@ import com.aitasker.expert.dto.request.CreateServicePackageRequest;
 import com.aitasker.expert.dto.request.UpdateServicePackageRequest;
 import com.aitasker.expert.dto.response.ServicePackageResponse;
 import com.aitasker.expert.service.ServicePackageService;
+import com.aitasker.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -25,8 +27,11 @@ public class ServicePackageController {
 
     // API đăng ký một gói dịch vụ mới công khai lên hệ thống
     @PostMapping
-    public ApiResponse<ServicePackageResponse> createPackage(@Valid @RequestBody CreateServicePackageRequest request) {
-        Long currentUserId = 1L; // Giả lập ID user đang đăng nhập để test
+    @PreAuthorize("hasRole('EXPERT')")
+    public ApiResponse<ServicePackageResponse> createPackage(
+            @Valid @RequestBody CreateServicePackageRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        Long currentUserId = principal.getUser().getId();
         ServicePackageResponse response = packageService.createPackage(currentUserId, request);
         return ApiResponse.success("Đăng ký gói dịch vụ thành công!", response);
     }
@@ -41,8 +46,11 @@ public class ServicePackageController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Chuyên gia cập nhật thông tin/giá tiền của gói dịch vụ")
-    public ApiResponse<ServicePackageResponse> updatePackage(@PathVariable Long id, @Valid @RequestBody UpdateServicePackageRequest request) {
-        Long currentUserId = 1L;
+    public ApiResponse<ServicePackageResponse> updatePackage(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateServicePackageRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        Long currentUserId = principal.getUser().getId();
         ServicePackageResponse response = packageService.updatePackage(currentUserId, id, request);
         return ApiResponse.success("Cập nhật gói dịch vụ thành công!", response);
     }
@@ -50,8 +58,10 @@ public class ServicePackageController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Chuyên gia gỡ bỏ/xóa một gói dịch vụ khỏi hệ thống")
-    public ApiResponse<Void> deletePackage(@PathVariable Long id) {
-        Long currentUserId = 1L;
+    public ApiResponse<Void> deletePackage(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        Long currentUserId = principal.getUser().getId();
         packageService.deletePackage(currentUserId, id);
         return ApiResponse.success("Xóa gói dịch vụ thành công!", null);
     }

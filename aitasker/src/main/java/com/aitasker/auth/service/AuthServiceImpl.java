@@ -46,11 +46,23 @@ public class AuthServiceImpl implements AuthService {
         user.setFailedLoginAttempts(0);
         user.setAccountLocked(false);
 
+        Role requestedRole;
         try {
-            user.setRole(Role.valueOf(request.getRole().toUpperCase()));
+            requestedRole = Role.valueOf(request.getRole().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Role không hợp lệ. Phải là CLIENT hoặc EXPERT");
         }
+
+        // Trước đây Role.valueOf(...) cho qua cả "ADMIN" vì Role enum có
+        // giá trị đó -> bất kỳ ai cũng tự đăng ký được tài khoản ADMIN qua
+        // API public. Chặn tường minh: API đăng ký công khai chỉ tạo được
+        // CLIENT hoặc EXPERT. Tài khoản ADMIN phải được tạo bằng cách khác
+        // (seed dữ liệu, migration, hoặc một API admin-only riêng).
+        if (requestedRole != Role.CLIENT && requestedRole != Role.EXPERT) {
+            throw new IllegalArgumentException("Role không hợp lệ. Phải là CLIENT hoặc EXPERT");
+        }
+
+        user.setRole(requestedRole);
 
         userRepository.save(user);
 
