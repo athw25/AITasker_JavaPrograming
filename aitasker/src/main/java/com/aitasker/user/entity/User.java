@@ -7,8 +7,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
@@ -24,8 +26,6 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
-    // Không bao giờ serialize password ra JSON, kể cả khi entity vô tình
-    // bị trả trực tiếp từ một controller/service nào đó trong tương lai.
     @JsonIgnore
     @Column(nullable = false)
     private String password;
@@ -37,6 +37,7 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
+
     @Column(name = "failed_login_attempts", columnDefinition = "INT DEFAULT 0")
     private Integer failedLoginAttempts = 0;
 
