@@ -1,0 +1,67 @@
+spring:
+  datasource:
+    url: jdbc:sqlserver://${DB_HOST}:${DB_PORT:1433};databaseName=${DB_NAME};encrypt=true;trustServerCertificate=false
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 15MB
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+ai:
+  enabled: ${AI_ENABLED:false}
+  provider: ${AI_PROVIDER:gemini}
+  gemini:
+    api-key: ${AI_GEMINI_API_KEY}
+    model: ${AI_GEMINI_MODEL:gemini-2.0-flash}
+    base-url: https://generativelanguage.googleapis.com/v1beta/models
+    timeout-seconds: 30
+    temperature: 0.7
+    max-output-tokens: 2048
+
+file:
+  upload:
+    dir: ${FILE_UPLOAD_DIR:/app/uploads}
+
+logging:
+  level:
+    com.aitasker: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN
+  file:
+    name: /app/logs/aitasker.log
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 30
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n"
