@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aitasker.audit.service.AuditLogService;
 import com.aitasker.exception.BadRequestException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.milestone.entity.Milestone;
@@ -31,6 +32,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final TransactionRepository transactionRepository;
     private final ProjectRepository projectRepository;
     private final MilestoneRepository milestoneRepository;
+    private final AuditLogService auditLogService;
+    private final com.aitasker.user.repository.UserRepository userRepository;
 
     @Override
     public Payment deposit(DepositRequest request, Long clientId) {
@@ -63,6 +66,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .description("Deposit vào Escrow cho Project #" + project.getId())
                 .build();
         transactionRepository.save(transaction);
+
+        userRepository.findById(clientId).ifPresent(client ->
+                auditLogService.log(client, "PAYMENT_DEPOSIT",
+                        "Deposit " + request.getAmount() + " vào Project #" + project.getId()));
 
         return payment;
     }
@@ -98,6 +105,10 @@ public class PaymentServiceImpl implements PaymentService {
                 .description("Release Escrow cho Expert — Payment #" + payment.getId())
                 .build();
         transactionRepository.save(transaction);
+
+        userRepository.findById(clientId).ifPresent(client ->
+                auditLogService.log(client, "PAYMENT_RELEASE",
+                        "Release Payment #" + payment.getId()));
 
         return payment;
     }
@@ -135,7 +146,40 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Transaction> getTransactionHistoryForExpert(Long expertId) {
+        return transactionRepository.findByPaymentProjectExpertIdOrderByCreatedAtDesc(expertId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Transaction> getAllTransactions() {
         return transactionRepository.findAll();
+    }
+
+    @Override
+    public Payment refund(Long paymentId, String reason) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment không tìm thấy"));
+
+        if (payment.getStatus() != PaymentStatus.HELD) {
+            throw new BadRequestException("Chỉ hoàn tiền được Payment đang ở trạng thái HELD");
+        }
+
+        payment.setStatus(PaymentStatus.REFUNDED);
+        paymentRepository.save(payment);
+
+        Transaction transaction = Transaction.builder()
+                .payment(payment)
+                .type(TransactionType.REFUND)
+                .amount(payment.getAmount())
+                .description("Refund Escrow — Payment #" + payment.getId()
+                        + (reason != null ? " — Lý do: " + reason : ""))
+                .build();
+        transactionRepository.save(transaction);
+
+        auditLogService.log(null, "PAYMENT_REFUND",
+                "Refund Payment #" + payment.getId() + (reason != null ? " — " + reason : ""));
+
+        return payment;
     }
 }
