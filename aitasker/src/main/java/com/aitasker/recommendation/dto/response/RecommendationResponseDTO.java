@@ -14,6 +14,10 @@ public class RecommendationResponseDTO {
     private String expertName;
     private Long jobId;
     private Double matchScore;
+    private Double skillScore;
+    private Double ratingScore;
+    private Double successRateScore;
+    private Double experienceScore;
     private boolean isAccepted;
     private LocalDateTime createdAt;
 }
