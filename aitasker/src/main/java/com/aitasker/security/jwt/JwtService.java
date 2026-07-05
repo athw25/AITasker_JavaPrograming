@@ -26,10 +26,10 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isTokenExpiredInternal(token);
+        return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
-    private boolean isTokenExpiredInternal(String token) {
+    private boolean isTokenExpired(String token) {
         return extractAllClaims(token).getExpiration().before(new Date());
     }
 
@@ -41,6 +41,7 @@ public class JwtService {
                 .getPayload();
     }
 
+    // Phuc An: thêm hàm generateToken để tạo chuỗi JWT cấp cho User
     public String generateToken(UserDetails userDetails) {
         return Jwts.builder()
                 .subject(userDetails.getUsername())
@@ -48,35 +49,5 @@ public class JwtService {
                 .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24))
                 .signWith(signingKey)
                 .compact();
-    }
-
-    public String generateRefreshToken(UserDetails userDetails) {
-        return Jwts.builder()
-                .subject(userDetails.getUsername())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7))
-                .signWith(signingKey)
-                .compact();
-    }
-
-    public String generateRememberMeToken(UserDetails userDetails) {
-        return Jwts.builder()
-                .subject(userDetails.getUsername())
-                .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 30))
-                .signWith(signingKey)
-                .compact();
-    }
-
-    public boolean isTokenExpired(String token) {
-        try {
-            return extractAllClaims(token).getExpiration().before(new Date());
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    public Date getTokenExpiration(String token) {
-        return extractAllClaims(token).getExpiration();
     }
 }
