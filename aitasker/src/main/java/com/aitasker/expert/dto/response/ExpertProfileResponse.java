@@ -1,12 +1,14 @@
 package com.aitasker.expert.dto.response;
 
+import java.math.BigDecimal;
+
 public class ExpertProfileResponse {
     private Long id;
     private String fullName;
     private String title;
     private String skills;
     private int experienceYears;
-    private double hourlyRate;
+    private BigDecimal hourlyRate;
 
     // Nhận xét của TL: Tuyệt đối không đem trường internalNotes vào đây!
 
@@ -21,6 +23,6 @@ public class ExpertProfileResponse {
     public void setSkills(String skills) { this.skills = skills; }
     public int getExperienceYears() { return experienceYears; }
     public void setExperienceYears(int experienceYears) { this.experienceYears = experienceYears; }
-    public double getHourlyRate() { return hourlyRate; }
-    public void setHourlyRate(double hourlyRate) { this.hourlyRate = hourlyRate; }
+    public BigDecimal getHourlyRate() { return hourlyRate; }
+    public void setHourlyRate(BigDecimal hourlyRate) { this.hourlyRate = hourlyRate; }
 }

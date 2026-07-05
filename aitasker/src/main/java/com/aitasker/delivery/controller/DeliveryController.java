@@ -31,7 +31,7 @@ public class DeliveryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('AI_EXPERT')")
+    @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Submit a delivery")
     public ApiResponse<DeliveryResponse> submit(@Valid @RequestBody SubmitDeliveryRequest request,
             @AuthenticationPrincipal CustomUserDetails principal) {

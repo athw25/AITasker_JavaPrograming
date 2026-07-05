@@ -1,0 +1,309 @@
+diff --git a/aitasker/src/main/java/com/aitasker/auth/service/AuthServiceImpl.java b/aitasker/src/main/java/com/aitasker/auth/service/AuthServiceImpl.java
+index 2293538..9899181 100644
+--- a/aitasker/src/main/java/com/aitasker/auth/service/AuthServiceImpl.java
++++ b/aitasker/src/main/java/com/aitasker/auth/service/AuthServiceImpl.java
+@@ -32,12 +32,24 @@ public class AuthServiceImpl implements AuthService {
+         user.setEmail(request.getEmail());
+         user.setPassword(passwordEncoder.encode(request.getPassword()));
+ 
++        Role requestedRole;
+         try {
+-            user.setRole(Role.valueOf(request.getRole().toUpperCase()));
++            requestedRole = Role.valueOf(request.getRole().toUpperCase());
+         } catch (IllegalArgumentException e) {
+             throw new IllegalArgumentException("Role không hợp lệ. Phải là CLIENT hoặc EXPERT");
+         }
+ 
++        // Trước đây Role.valueOf(...) cho qua cả "ADMIN" vì Role enum có
++        // giá trị đó -> bất kỳ ai cũng tự đăng ký được tài khoản ADMIN qua
++        // API public. Chặn tường minh: API đăng ký công khai chỉ tạo được
++        // CLIENT hoặc EXPERT. Tài khoản ADMIN phải được tạo bằng cách khác
++        // (seed dữ liệu, migration, hoặc một API admin-only riêng).
++        if (requestedRole != Role.CLIENT && requestedRole != Role.EXPERT) {
++            throw new IllegalArgumentException("Role không hợp lệ. Phải là CLIENT hoặc EXPERT");
++        }
++
++        user.setRole(requestedRole);
++
+         userRepository.save(user);
+ 
+         if (user.getRole() == Role.EXPERT) {
+diff --git a/aitasker/src/main/java/com/aitasker/config/AdminSeeder.java b/aitasker/src/main/java/com/aitasker/config/AdminSeeder.java
+new file mode 100644
+index 0000000..91082cc
+--- /dev/null
++++ b/aitasker/src/main/java/com/aitasker/config/AdminSeeder.java
+@@ -0,0 +1,58 @@
++package com.aitasker.config;
++
++import com.aitasker.common.enums.Role;
++import com.aitasker.user.entity.User;
++import com.aitasker.user.repository.UserRepository;
++import lombok.RequiredArgsConstructor;
++import lombok.extern.slf4j.Slf4j;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.boot.CommandLineRunner;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.stereotype.Component;
++
++/**
++ * Tạo tài khoản ADMIN đầu tiên khi khởi động app, vì API
++ * POST /api/auth/register giờ đã CHẶN việc tự đăng ký role ADMIN
++ * (trước đây bị lỗi cho phép, đã vá ở AuthServiceImpl).
++ *
++ * Chỉ chạy khi hệ thống CHƯA có Admin nào (an toàn khi restart nhiều lần,
++ * không tạo trùng). Cấu hình qua application.yaml / biến môi trường:
++ *
++ *   app.admin.email=admin@aitasker.com
++ *   app.admin.password=ChangeMe123!
++ *
++ * Đổi mật khẩu mặc định trước khi dùng thật, kể cả trong môi trường học tập.
++ */
++@Slf4j
++@Component
++@RequiredArgsConstructor
++public class AdminSeeder implements CommandLineRunner {
++
++    private final UserRepository userRepository;
++    private final PasswordEncoder passwordEncoder;
++
++    @Value("${app.admin.email:admin@aitasker.com}")
++    private String adminEmail;
++
++    @Value("${app.admin.password:Admin@123}")
++    private String adminPassword;
++
++    @Override
++    public void run(String... args) {
++        boolean adminExists = userRepository.existsByRole(Role.ADMIN);
++
++        if (adminExists) {
++            return;
++        }
++
++        User admin = new User();
++        admin.setName("System Admin");
++        admin.setEmail(adminEmail);
++        admin.setPassword(passwordEncoder.encode(adminPassword));
++        admin.setRole(Role.ADMIN);
++
++        userRepository.save(admin);
++
++        log.info("Đã tạo tài khoản ADMIN mặc định: {} (nhớ đổi mật khẩu!)", adminEmail);
++    }
++}
+diff --git a/aitasker/src/main/java/com/aitasker/expert/controller/ExpertController.java b/aitasker/src/main/java/com/aitasker/expert/controller/ExpertController.java
+index 9af6f6e..df9edd1 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/controller/ExpertController.java
++++ b/aitasker/src/main/java/com/aitasker/expert/controller/ExpertController.java
+@@ -4,10 +4,12 @@ import com.aitasker.common.response.ApiResponse;
+ import com.aitasker.expert.dto.request.UpdateExpertProfileRequest;
+ import com.aitasker.expert.dto.response.ExpertProfileResponse;
+ import com.aitasker.expert.service.ExpertService;
++import com.aitasker.security.userdetails.CustomUserDetails;
+ import io.swagger.v3.oas.annotations.Operation;
+ import io.swagger.v3.oas.annotations.tags.Tag;
+ import jakarta.validation.Valid;
+ import org.springframework.security.access.prepost.PreAuthorize;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
+ import org.springframework.web.bind.annotation.*;
+ 
+ @RestController
+@@ -24,8 +26,9 @@ public class ExpertController {
+     @GetMapping("/me")
+     @PreAuthorize("hasRole('EXPERT')")
+     @Operation(summary = "Lấy thông tin hồ sơ của Chuyên gia đang đăng nhập")
+-    public ApiResponse<ExpertProfileResponse> getMyProfile() {
+-        Long currentUserId = 1L; // Giả lập lấy từ Security Context
++    public ApiResponse<ExpertProfileResponse> getMyProfile(
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         ExpertProfileResponse profile = expertService.getMyProfile(currentUserId);
+         return ApiResponse.success("Lấy thông tin hồ sơ chuyên gia thành công!", profile);
+     }
+@@ -33,8 +36,10 @@ public class ExpertController {
+     @PutMapping("/me")
+     @PreAuthorize("hasRole('EXPERT')")
+     @Operation(summary = "Cập nhật hồ sơ thông tin cá nhân của Chuyên gia")
+-    public ApiResponse<ExpertProfileResponse> updateProfile(@Valid @RequestBody UpdateExpertProfileRequest request) {
+-        Long currentUserId = 1L;
++    public ApiResponse<ExpertProfileResponse> updateProfile(
++            @Valid @RequestBody UpdateExpertProfileRequest request,
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         ExpertProfileResponse updated = expertService.updateProfile(currentUserId, request);
+         return ApiResponse.success("Cập nhật hồ sơ chuyên gia thành công!", updated);
+     }
+diff --git a/aitasker/src/main/java/com/aitasker/expert/controller/PortfolioController.java b/aitasker/src/main/java/com/aitasker/expert/controller/PortfolioController.java
+index a2ba0a8..32aed7f 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/controller/PortfolioController.java
++++ b/aitasker/src/main/java/com/aitasker/expert/controller/PortfolioController.java
+@@ -4,7 +4,10 @@ import com.aitasker.common.response.ApiResponse;
+ import com.aitasker.expert.dto.request.CreatePortfolioRequest;
+ import com.aitasker.expert.dto.response.PortfolioResponse;
+ import com.aitasker.expert.service.PortfolioService;
++import com.aitasker.security.userdetails.CustomUserDetails;
+ import jakarta.validation.Valid;
++import org.springframework.security.access.prepost.PreAuthorize;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
+ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ 
+@@ -20,13 +23,16 @@ public class PortfolioController {
+ 
+     // API thêm mới một dự án vào Portfolio
+     @PostMapping
+-    public ApiResponse<PortfolioResponse> addPortfolio(@Valid @RequestBody CreatePortfolioRequest request) {
+-        Long currentUserId = 1L; // Giả lập ID user đang đăng nhập
++    @PreAuthorize("hasRole('EXPERT')")
++    public ApiResponse<PortfolioResponse> addPortfolio(
++            @Valid @RequestBody CreatePortfolioRequest request,
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         PortfolioResponse response = portfolioService.addPortfolio(currentUserId, request);
+         return ApiResponse.success("Thêm dự án vào portfolio thành công!", response);
+     }
+ 
+-    // API lấy danh sách portfolio của một expert
++    // API lấy danh sách portfolio của một expert (public, không cần đăng nhập)
+     @GetMapping("/{expertId}")
+     public ApiResponse<List<PortfolioResponse>> getPortfolios(@PathVariable Long expertId) {
+         List<PortfolioResponse> list = portfolioService.getPortfoliosByExpert(expertId);
+@@ -35,8 +41,11 @@ public class PortfolioController {
+ 
+     // API xóa một dự án khỏi Portfolio dựa theo ID
+     @DeleteMapping("/{id}")
+-    public ApiResponse<Void> deletePortfolio(@PathVariable Long id) {
+-        Long currentUserId = 1L; // Giả lập ID user đang đăng nhập
++    @PreAuthorize("hasRole('EXPERT')")
++    public ApiResponse<Void> deletePortfolio(
++            @PathVariable Long id,
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         portfolioService.deletePortfolio(currentUserId, id);
+         return ApiResponse.success("Xóa dự án khỏi portfolio thành công!", null);
+     }
+diff --git a/aitasker/src/main/java/com/aitasker/expert/controller/ServicePackageController.java b/aitasker/src/main/java/com/aitasker/expert/controller/ServicePackageController.java
+index c9c9c55..e15c42f 100644
+--- a/aitasker/src/main/java/com/aitasker/expert/controller/ServicePackageController.java
++++ b/aitasker/src/main/java/com/aitasker/expert/controller/ServicePackageController.java
+@@ -5,11 +5,13 @@ import com.aitasker.expert.dto.request.CreateServicePackageRequest;
+ import com.aitasker.expert.dto.request.UpdateServicePackageRequest;
+ import com.aitasker.expert.dto.response.ServicePackageResponse;
+ import com.aitasker.expert.service.ServicePackageService;
++import com.aitasker.security.userdetails.CustomUserDetails;
+ 
+ import io.swagger.v3.oas.annotations.Operation;
+ import jakarta.validation.Valid;
+ 
+ import org.springframework.security.access.prepost.PreAuthorize;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
+ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ 
+@@ -25,8 +27,11 @@ public class ServicePackageController {
+ 
+     // API đăng ký một gói dịch vụ mới công khai lên hệ thống
+     @PostMapping
+-    public ApiResponse<ServicePackageResponse> createPackage(@Valid @RequestBody CreateServicePackageRequest request) {
+-        Long currentUserId = 1L; // Giả lập ID user đang đăng nhập để test
++    @PreAuthorize("hasRole('EXPERT')")
++    public ApiResponse<ServicePackageResponse> createPackage(
++            @Valid @RequestBody CreateServicePackageRequest request,
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         ServicePackageResponse response = packageService.createPackage(currentUserId, request);
+         return ApiResponse.success("Đăng ký gói dịch vụ thành công!", response);
+     }
+@@ -41,8 +46,11 @@ public class ServicePackageController {
+     @PutMapping("/{id}")
+     @PreAuthorize("hasRole('EXPERT')")
+     @Operation(summary = "Chuyên gia cập nhật thông tin/giá tiền của gói dịch vụ")
+-    public ApiResponse<ServicePackageResponse> updatePackage(@PathVariable Long id, @Valid @RequestBody UpdateServicePackageRequest request) {
+-        Long currentUserId = 1L;
++    public ApiResponse<ServicePackageResponse> updatePackage(
++            @PathVariable Long id,
++            @Valid @RequestBody UpdateServicePackageRequest request,
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         ServicePackageResponse response = packageService.updatePackage(currentUserId, id, request);
+         return ApiResponse.success("Cập nhật gói dịch vụ thành công!", response);
+     }
+@@ -50,8 +58,10 @@ public class ServicePackageController {
+     @DeleteMapping("/{id}")
+     @PreAuthorize("hasRole('EXPERT')")
+     @Operation(summary = "Chuyên gia gỡ bỏ/xóa một gói dịch vụ khỏi hệ thống")
+-    public ApiResponse<Void> deletePackage(@PathVariable Long id) {
+-        Long currentUserId = 1L;
++    public ApiResponse<Void> deletePackage(
++            @PathVariable Long id,
++            @AuthenticationPrincipal CustomUserDetails principal) {
++        Long currentUserId = principal.getUser().getId();
+         packageService.deletePackage(currentUserId, id);
+         return ApiResponse.success("Xóa gói dịch vụ thành công!", null);
+     }
+diff --git a/aitasker/src/main/java/com/aitasker/payment/controller/WithdrawalController.java b/aitasker/src/main/java/com/aitasker/payment/controller/WithdrawalController.java
+index cff5402..3a9f00f 100644
+--- a/aitasker/src/main/java/com/aitasker/payment/controller/WithdrawalController.java
++++ b/aitasker/src/main/java/com/aitasker/payment/controller/WithdrawalController.java
+@@ -4,12 +4,14 @@ import com.aitasker.common.response.ApiResponse;
+ import com.aitasker.payment.dto.WithdrawalRequest;
+ import com.aitasker.payment.entity.Withdrawal;
+ import com.aitasker.payment.service.EscrowService;
++import com.aitasker.security.userdetails.CustomUserDetails;
+ import io.swagger.v3.oas.annotations.Operation;
+ import io.swagger.v3.oas.annotations.tags.Tag;
+ import jakarta.validation.Valid;
+ import lombok.RequiredArgsConstructor;
+ import org.springframework.http.ResponseEntity;
+ import org.springframework.security.access.prepost.PreAuthorize;
++import org.springframework.security.core.annotation.AuthenticationPrincipal;
+ import org.springframework.web.bind.annotation.*;
+ import java.util.List;
+ 
+@@ -25,17 +27,22 @@ public class WithdrawalController {
+     @PreAuthorize("hasRole('EXPERT')")
+     @Operation(summary = "Tạo yêu cầu rút tiền")
+     public ResponseEntity<ApiResponse<Withdrawal>> requestWithdrawal(
+-            @Valid @RequestBody WithdrawalRequest request
++            @Valid @RequestBody WithdrawalRequest request,
++            @AuthenticationPrincipal CustomUserDetails principal
+     ) {
+-        Withdrawal withdrawal = escrowService.requestWithdrawal(request, 1L); // thay bằng expertId từ JWT
++        Long expertId = principal.getUser().getId();
++        Withdrawal withdrawal = escrowService.requestWithdrawal(request, expertId);
+         return ResponseEntity.ok(ApiResponse.success(withdrawal));
+     }
+ 
+     @GetMapping("/me")
+     @PreAuthorize("hasRole('EXPERT')")
+     @Operation(summary = "Expert xem danh sách withdrawal của mình")
+-    public ResponseEntity<ApiResponse<List<Withdrawal>>> getMyWithdrawals() {
+-        List<Withdrawal> list = escrowService.getMyWithdrawals(1L); // expertId từ JWT
++    public ResponseEntity<ApiResponse<List<Withdrawal>>> getMyWithdrawals(
++            @AuthenticationPrincipal CustomUserDetails principal
++    ) {
++        Long expertId = principal.getUser().getId();
++        List<Withdrawal> list = escrowService.getMyWithdrawals(expertId);
+         return ResponseEntity.ok(ApiResponse.success(list));
+     }
+ }
+\ No newline at end of file
+diff --git a/aitasker/src/main/java/com/aitasker/user/repository/UserRepository.java b/aitasker/src/main/java/com/aitasker/user/repository/UserRepository.java
+index 0ea2069..4dc9fd9 100644
+--- a/aitasker/src/main/java/com/aitasker/user/repository/UserRepository.java
++++ b/aitasker/src/main/java/com/aitasker/user/repository/UserRepository.java
+@@ -1,10 +1,12 @@
+ // UserRepository.java
+ package com.aitasker.user.repository;
+ 
++import com.aitasker.common.enums.Role;
+ import com.aitasker.user.entity.User;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import java.util.Optional;
+ public interface UserRepository extends JpaRepository<User, Long> {
+     Optional<User> findByEmail(String email);
+     boolean existsByEmail(String email);
++    boolean existsByRole(Role role);
+ }
+\ No newline at end of file

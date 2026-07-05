@@ -1,0 +1,179 @@
+{
+  "info": {
+    "name": "AITasker API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({key:'Content-Type',value:'application/json'});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{BASE_URL}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\":\"Client Test\",\n  \"email\":\"client@test.com\",\n  \"password\":\"123456\",\n  \"role\":\"CLIENT\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200',()=>pm.response.to.have.status(200));",
+                  "let j=pm.response.json();",
+                  "pm.environment.set('CLIENT_TOKEN',j.token||j.jwt||j.accessToken||'');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{BASE_URL}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\":\"client@test.com\",\n  \"password\":\"123456\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Create Job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Success',()=>pm.expect(pm.response.code).to.be.oneOf([200,201]));",
+                  "let j=pm.response.json(); if(j.id) pm.environment.set('JOB_ID',j.id); else if(j.data&&j.data.id) pm.environment.set('JOB_ID',j.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CLIENT_TOKEN}}"
+              }
+            ],
+            "url": "{{BASE_URL}}/api/jobs",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\":\"Smoke Test Job\",\n  \"description\":\"Test\",\n  \"budget\":1000\n}"
+            }
+          }
+        },
+        {
+          "name": "My Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CLIENT_TOKEN}}"
+              }
+            ],
+            "url": "{{BASE_URL}}/api/jobs/me"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Proposals",
+      "item": [
+        {
+          "name": "Create Proposal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j=pm.response.json(); if(j.id) pm.environment.set('PROPOSAL_ID',j.id); else if(j.data&&j.data.id) pm.environment.set('PROPOSAL_ID',j.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{EXPERT_TOKEN}}"
+              }
+            ],
+            "url": "{{BASE_URL}}/api/proposals",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\"jobId\":\"{{JOB_ID}}\",\n\"price\":900,\n\"duration\":7,\n\"coverLetter\":\"Proposal\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "Create Project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let j=pm.response.json(); if(j.id) pm.environment.set('PROJECT_ID',j.id); else if(j.data&&j.data.id) pm.environment.set('PROJECT_ID',j.data.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{CLIENT_TOKEN}}"
+              }
+            ],
+            "url": "{{BASE_URL}}/api/projects",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\"proposalId\":\"{{PROPOSAL_ID}}\"\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

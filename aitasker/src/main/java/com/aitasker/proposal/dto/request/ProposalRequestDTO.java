@@ -22,4 +22,11 @@ public class ProposalRequestDTO {
 
     @NotBlank(message = "Thư giới thiệu không được để trống")
     private String coverLetter;
+
+    @NotNull(message = "Thời gian hoàn thành không được để trống")
+    @Min(value = 1, message = "Thời gian hoàn thành phải lớn hơn 0")
+    private Integer duration;
+
+    public Integer getDuration() { return duration; }
+    public void setDuration(Integer duration) { this.duration = duration; }
 }

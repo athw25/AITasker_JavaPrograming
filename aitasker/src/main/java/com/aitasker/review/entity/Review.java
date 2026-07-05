@@ -32,6 +32,4 @@ public class Review extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private ReviewType type;
-
-    private LocalDateTime createdAt;
 }

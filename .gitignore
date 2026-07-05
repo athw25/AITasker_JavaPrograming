@@ -1,48 +1,203 @@
-HELP.md
+################################
+# Build and Compilation
+################################
 target/
+build/
 .mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+*.jar
+*.war
+*.ear
+*.class
+*.classpath
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
+################################
+# IDE and Editor Configuration
+################################
+# IntelliJ IDEA
 .idea/
 *.iws
 *.iml
 *.ipr
+*.iml.*.xml
 
-### NetBeans ###
+# Eclipse
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.apt_generated
+.factorypath
+.sts4-cache
+
+# Spring Tools Suite (STS)
+.springBeans
+.sts4-cache
+
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+/nbactions.xml
+/nb-configuration.xml
 
-### VS Code ###
+# VS Code
 .vscode/
 .vs/
+*.code-workspace
 
+# Vim
+.vim/
+*.swp
+*.swo
+*~
+.*.sw[a-z]
+*.un~
+
+# Sublime Text
+*.sublime-project
+
+################################
+# OS and System Files
+################################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+.directory
+
+################################
+# Development and Temporary Files
+################################
+# Patch files
+*.patch
+*.diff
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Logs
 *.log
+logs/
+log/
 
-# OS files
-.DS_Store
-Thumbs.db
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+*.h2.db
 
-# Environment
-.env
+# Node modules (if any frontend components)
+node_modules/
+npm-debug.log
+yarn-error.log
 
-# Java
+# Python (if any Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+
+################################
+# Maven
+################################
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+################################
+# Runtime and Generated Files
+################################
 *.class
+*.classpath
+.classpath
+.DS_Store
+*.ctxt
+.mtj.tmp/
+
+################################
+# IDEs - Do NOT commit personal IDE settings
+################################
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+################################
+# Temporary and Backup Files
+################################
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+.~*
+
+################################
+# Maven Wrapper (but keep .cmd files)
+################################
+.mvn/wrapper/maven-wrapper.jar
+
+################################
+# Test Coverage
+################################
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+
+################################
+# OS-specific
+################################
+.AppleDouble
+.LSOverride
+._*
+.apdisk
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.nfs*
+
+################################
+# Gradle (if migrating to Gradle)
+################################
+.gradle/
+gradle-wrapper.jar
+!gradle-wrapper.jar
+gradle-wrapper.properties
+gradlew
+gradlew.bat
+
+################################
+# Keep important documentation and config
+################################
+# DO NOT IGNORE - These should be committed
+!README.md
+!HELP.md
+!pom.xml
+!mvnw
+!mvnw.cmd
+!.gitignore
+!Postman_Test_Scripts_Guide.md
+!Smoke_Test_Plan_AITasker.md
+!AITasker_AI_Fix_Prompts.md

@@ -32,6 +32,11 @@ public interface MilestoneRepository
     List<Milestone> findByProject(Project project);
 
     /**
+     * Lấy milestone theo project theo thứ tự ID.
+     */
+    List<Milestone> findByProjectIdOrderByIdAsc(Long projectId);
+
+    /**
      * Lấy milestone theo trạng thái.
      */
     List<Milestone> findByStatus(

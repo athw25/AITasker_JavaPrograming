@@ -1,11 +1,11 @@
 // src/main/java/com/aitasker/payment/entity/Transaction.java
 package com.aitasker.payment.entity;
 
+import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.payment.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "transactions")
@@ -13,11 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Transaction {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Transaction extends BaseEntity {
 
     // Mỗi Transaction thuộc về một Payment
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,12 +28,4 @@ public class Transaction {
     private BigDecimal amount;
 
     private String description;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-    }
 }

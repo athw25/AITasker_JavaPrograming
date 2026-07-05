@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +18,15 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/**
+ * Lọc và xác thực JWT cho mỗi request.
+ *
+ * LƯU Ý BẢO MẬT: KHÔNG log token, header Authorization, hay bất kỳ dữ liệu
+ * nhạy cảm nào ra console/log — kể cả ở mức DEBUG. Log token = log chìa khóa
+ * đăng nhập của user, chỉ cần ai đó đọc được log là chiếm được phiên đăng nhập.
+ * Chỉ log các thông tin không nhạy cảm (URI, username, kết quả valid/invalid).
+ */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
@@ -34,54 +44,31 @@ public class JwtFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        System.out.println("\n========== JWT FILTER ==========");
-        System.out.println("URI: " + request.getRequestURI());
-
         UserDetailsService userDetailsService = userDetailsServiceProvider.getIfAvailable();
 
         if (userDetailsService == null) {
-            System.out.println("UserDetailsService NOT FOUND");
+            log.warn("UserDetailsService bean not found, skipping JWT auth for {}", request.getRequestURI());
             filterChain.doFilter(request, response);
             return;
         }
 
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
 
-        System.out.println("Authorization Header: " + authHeader);
-
         if (authHeader == null || !authHeader.startsWith(BEARER_PREFIX)) {
-            System.out.println("No Bearer Token");
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
             String token = authHeader.substring(BEARER_PREFIX.length());
-
-            System.out.println("Token: " + token);
-
             String username = jwtService.extractUsername(token);
-
-            System.out.println("Username from token: " + username);
 
             if (username != null
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                UserDetails userDetails =
-                        userDetailsService.loadUserByUsername(username);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                System.out.println("UserDetails username: "
-                        + userDetails.getUsername());
-
-                System.out.println("Authorities: "
-                        + userDetails.getAuthorities());
-
-                boolean valid =
-                        jwtService.isTokenValid(token, userDetails);
-
-                System.out.println("Token valid: " + valid);
-
-                if (valid) {
+                if (jwtService.isTokenValid(token, userDetails)) {
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
@@ -91,38 +78,23 @@ public class JwtFilter extends OncePerRequestFilter {
                             );
 
                     authentication.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
+                            new WebAuthenticationDetailsSource().buildDetails(request)
                     );
 
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authentication);
-
-                    System.out.println("Authentication SET SUCCESS");
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    log.debug("Authenticated user '{}' for {}", username, request.getRequestURI());
                 } else {
-                    System.out.println("Token INVALID");
+                    log.debug("Invalid JWT token presented for {}", request.getRequestURI());
                 }
-            } else {
-                System.out.println(
-                        "Authentication already exists OR username null");
             }
 
         } catch (JwtException | IllegalArgumentException ex) {
-
-            System.out.println("JWT Exception:");
-            ex.printStackTrace();
-
+            // Không log ex với đầy đủ stacktrace ra stdout (tránh in lại token trong message
+            // của một số exception). Log message ngắn gọn ở mức WARN là đủ để điều tra.
+            log.warn("JWT processing failed for {}: {}", request.getRequestURI(), ex.getMessage());
             SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
-
-        System.out.println(
-                "Authentication after filter: "
-                        + SecurityContextHolder.getContext()
-                        .getAuthentication()
-        );
-
-        System.out.println("========== END JWT FILTER ==========\n");
     }
 }

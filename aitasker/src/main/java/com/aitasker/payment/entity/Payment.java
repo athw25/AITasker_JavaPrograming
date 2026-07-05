@@ -1,12 +1,12 @@
 package com.aitasker.payment.entity;
 
+import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.milestone.entity.Milestone;
 import com.aitasker.payment.enums.PaymentStatus;
 import com.aitasker.project.entity.Project;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "payments")
@@ -14,11 +14,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Payment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+// Kế thừa BaseEntity thay vì tự khai báo lại id/createdAt/updatedAt/@PrePersist/@PreUpdate
+// (trước đây bị lặp code y hệt BaseEntity, không đồng nhất với các entity khác trong hệ thống).
+public class Payment extends BaseEntity {
 
     // Quan hệ với Project (bắt buộc)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -42,18 +40,4 @@ public class Payment {
     // Mã giao dịch tham chiếu (để tra cứu)
     @Column(name = "transaction_ref")
     private String transactionRef;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

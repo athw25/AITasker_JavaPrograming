@@ -1,5 +1,6 @@
 package com.aitasker.expert.service.impl;
 
+import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.expert.dto.request.UpdateExpertProfileRequest;
 import com.aitasker.expert.dto.response.ExpertProfileResponse;
 import com.aitasker.expert.entity.ExpertProfile;
@@ -22,15 +23,15 @@ public class ExpertServiceImpl implements ExpertService {
 
     @Override
     public ExpertProfileResponse getMyProfile(Long currentUserId) {
-        ExpertProfile profile = expertRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ chuyên gia!"));
+        ExpertProfile profile = expertRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ chuyên gia!"));
         return expertMapper.toDto(profile);
     }
 
     @Override
     public ExpertProfileResponse updateProfile(Long currentUserId, UpdateExpertProfileRequest request) {
-        ExpertProfile profile = expertRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hồ sơ chuyên gia!"));
+        ExpertProfile profile = expertRepository.findByUserId(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hồ sơ chuyên gia!"));
         
         // Cập nhật dữ liệu từ Request lên Entity dữ liệu thật
         profile.setFullName(request.getFullName());
