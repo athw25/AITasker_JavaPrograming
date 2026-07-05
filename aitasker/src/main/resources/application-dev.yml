@@ -1,15 +1,9 @@
 spring:
-  application:
-    name: aitasker
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
-
   datasource:
     url: jdbc:sqlserver://${DB_HOST:127.0.0.1}:${DB_PORT:1433};databaseName=${DB_NAME:AITasker};encrypt=false;trustServerCertificate=true
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:Aa123456}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-
   jpa:
     hibernate:
       ddl-auto: update
@@ -17,21 +11,19 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
   servlet:
     multipart:
       enabled: true
       max-file-size: 10MB
       max-request-size: 15MB
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      show-details: never
 
 app:
   jwt:
@@ -52,3 +44,11 @@ ai:
 file:
   upload:
     dir: ${FILE_UPLOAD_DIR:uploads}
+
+logging:
+  level:
+    com.aitasker: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
