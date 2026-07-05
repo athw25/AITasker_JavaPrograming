@@ -46,13 +46,13 @@ public class ExpertServiceImpl implements ExpertService {
 
     @Override
     public java.util.List<ExpertProfileResponse> searchExpertsAdvanced(String skill, Double minRating, Integer minExperience) {
-        org.springframework.data.jpa.domain.Specification<com.aitasker.expert.entity.ExpertProfile> spec = 
-                com.aitasker.expert.repository.ExpertSpecification.filterExperts(skill, minRating, minExperience);
-        
-        java.util.List<com.aitasker.expert.entity.ExpertProfile> experts = expertRepository.findAll(spec);
-        
+        java.util.List<com.aitasker.expert.entity.ExpertProfile> experts = expertRepository.findAll();
+
         return experts.stream()
-                .map(expertMapper::toDto) // Gọi qua expertMapper dùng chung của dự án thay vì this::convertToResponse
+                .filter(expert -> skill == null || skill.isBlank() ||
+                        (expert.getSkills() != null && expert.getSkills().toLowerCase().contains(skill.toLowerCase())))
+                .filter(expert -> minExperience == null || expert.getExperienceYears() >= minExperience)
+                .map(expertMapper::toDto)
                 .collect(java.util.stream.Collectors.toList());
     }
 }
