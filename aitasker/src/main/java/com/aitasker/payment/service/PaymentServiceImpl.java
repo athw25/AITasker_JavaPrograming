@@ -101,6 +101,31 @@ public class PaymentServiceImpl implements PaymentService {
 
         return payment;
     }
+    @Override
+    public Payment refund(Long paymentId, java.math.BigDecimal amount, String reason) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment không tìm thấy"));
+
+        if (payment.getStatus() != PaymentStatus.HELD) {
+            throw new BadRequestException(
+                "Chỉ refund khi Payment đang HELD. Hiện tại: " + payment.getStatus());
+    }
+        if (amount.compareTo(java.math.BigDecimal.ZERO) <= 0
+                || amount.compareTo(payment.getAmount()) > 0) {
+            throw new BadRequestException("Số tiền hoàn không hợp lệ. Tối đa: " + payment.getAmount());
+    }
+
+    payment.setStatus(PaymentStatus.REFUNDED);
+    paymentRepository.save(payment);
+    Transaction transaction = Transaction.builder()
+                .payment(payment)
+                .type(TransactionType.REFUND)
+                .amount(amount)
+                .description(reason)
+                .build();
+    transactionRepository.save(transaction);
+    return payment;
+    }
 
     @Override
     @Transactional(readOnly = true)
