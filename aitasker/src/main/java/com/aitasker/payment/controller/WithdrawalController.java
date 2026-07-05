@@ -1,10 +1,10 @@
 package com.aitasker.payment.controller;
 
-import com.aittasker.common.response.ApiResponse;
-import com.aittasker.payment.dto.WithdrawalRequest;
-import com.aittasker.payment.entity.Withdrawal;
-import com.aittasker.payment.service.EscrowService;
-import com.aittasker.security.userdetails.CustomUserDetails;
+import com.aitasker.common.response.ApiResponse;
+import com.aitasker.payment.dto.WithdrawalRequest;
+import com.aitasker.payment.entity.Withdrawal;
+import com.aitasker.payment.service.EscrowService;
+import com.aitasker.security.userdetails.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
