@@ -26,7 +26,7 @@ public class RecommendationService {
 
     private final RecommendationRepository recommendationRepository;
     private final JobPostRepository jobPostRepository;
-    private final UserRepository userRepository; // Hoặc ExpertProfileRepository tùy kiến trúc của TV6
+    private final UserRepository userRepository;
 
     // 1. CẬP NHẬT FEEDBACK KHI CLIENT THUÊ EXPERT (Gọi từ ProposalService)
     @Transactional
@@ -53,7 +53,6 @@ public class RecommendationService {
 
         for (User expert : allExperts) {
             // Áp dụng công thức: 40% Skills + 20% Rating + 20% Success Rate + 20% Experience
-            // (Mock logic: Bạn thay thế các hàm get... bằng hàm lấy data thực tế từ ExpertProfile của TV6)
             double skillScore = calculateSkillMatch(job.getRequiredSkills(), expert) * 0.4;
             double ratingScore = getExpertRating(expert) * 0.2;
             double successRateScore = getExpertSuccessRate(expert) * 0.2;
@@ -92,7 +91,6 @@ public class RecommendationService {
                 .collect(Collectors.toList());
     }
 
-    // --- Các hàm phụ trợ tính toán (Cần ráp data thật từ TV6) ---
     private double calculateSkillMatch(String requiredSkills, User expert) {
         // Tạm thời trả về ngẫu nhiên để test luồng, thay bằng logic so sánh chuỗi thật
         return 80.0 + Math.random() * 20.0;

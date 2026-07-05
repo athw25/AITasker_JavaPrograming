@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-// Tạm thời bỏ RequestMapping chung để định nghĩa đường dẫn riêng cho từng API
 @RequiredArgsConstructor
 public class RecommendationController {
 
