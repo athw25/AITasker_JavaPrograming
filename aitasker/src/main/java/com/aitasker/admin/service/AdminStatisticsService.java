@@ -10,6 +10,7 @@ import com.aitasker.review.repository.ReviewRepository;
 import com.aitasker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ public class AdminStatisticsService {
     private final ProjectRepository projectRepository;
     private final ReviewRepository reviewRepository;
 
+    @Transactional(readOnly = true)
     public DashboardStatistics getDashboardStatistics(){
         return DashboardStatistics.builder()
                 // User stats

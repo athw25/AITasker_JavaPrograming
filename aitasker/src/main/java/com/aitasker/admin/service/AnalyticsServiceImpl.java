@@ -11,6 +11,10 @@ import com.aitasker.review.repository.ReviewRepository;
 import com.aitasker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +24,7 @@ public class AnalyticsServiceImpl implements AnalyticsService{
     private final PaymentRepository paymentRepository;
     private final ReviewRepository reviewRepository;
     @Override
+    @Transactional(readOnly = true)
     public AnalyticsStatistics getAnalytics() {
         return AnalyticsStatistics.builder()
                 .totalExperts(userRepository.countByRole(Role.EXPERT))
@@ -29,12 +34,18 @@ public class AnalyticsServiceImpl implements AnalyticsService{
                 .acceptedProposals(proposalRepository.countByStatus(ProposalStatus.ACCEPTED))
                 .rejectedProposals(proposalRepository.countByStatus(ProposalStatus.REJECTED))
 
-                .totalRevenue(paymentRepository.getTotalRevenue())
+                .totalRevenue(
+                        Optional.ofNullable(paymentRepository.getTotalRevenue())
+                                .orElse(BigDecimal.ZERO)
+                )
                 .pendingPayments(paymentRepository.countByStatus(PaymentStatus.PENDING))
                 .heldPayments(paymentRepository.countByStatus(PaymentStatus.HELD))
                 .releasedPayments(paymentRepository.countByStatus(PaymentStatus.RELEASED))
 
-                .averageRating(reviewRepository.getAverageRating())
+                .averageRating(
+                        Optional.ofNullable(reviewRepository.getAverageRating())
+                                .orElse(0.0)
+                )
 
                 .build();
     }

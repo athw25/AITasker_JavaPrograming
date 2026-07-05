@@ -1,6 +1,8 @@
 package com.aitasker.admin.controller;
 
 import com.aitasker.admin.service.AdminJobService;
+import com.aitasker.common.response.ApiResponse;
+import com.aitasker.job.dto.JobPostResponse;
 import com.aitasker.job.entity.JobPost;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,17 +14,20 @@ import java.util.List;
 @RequestMapping("/api/admin/jobs")
 @RequiredArgsConstructor
 public class AdminJobController {
+
     private final AdminJobService adminJobService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public List<JobPost> getAllJobs(){
-        return adminJobService.getAllJobs();
+    public ApiResponse<List<JobPostResponse>> getAllJobs(){
+        return ApiResponse.success(adminJobService.getAllJobs());
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public void deleteJob(@PathVariable Long id){
+    public ApiResponse<String> deleteJob(@PathVariable Long id){
         adminJobService.deleteJob(id);
+
+        return ApiResponse.success("Delete job successfully");
     }
 }

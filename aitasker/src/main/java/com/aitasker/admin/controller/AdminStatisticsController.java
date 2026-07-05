@@ -3,6 +3,7 @@ package com.aitasker.admin.controller;
 import com.aitasker.admin.dashboard.DashboardStatistics;
 import com.aitasker.admin.service.AdminStatisticsService;
 import com.aitasker.admin.service.AdminUserService;
+import com.aitasker.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,8 @@ public class AdminStatisticsController {
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get dashboard statistics")
-    public DashboardStatistics getDashboard(){
-        return adminStatisticsService.getDashboardStatistics();
+    public ApiResponse<DashboardStatistics>getDashboard(){
+        return ApiResponse.success(
+                adminStatisticsService.getDashboardStatistics());
     }
 }
