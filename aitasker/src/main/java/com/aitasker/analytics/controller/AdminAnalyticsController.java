@@ -20,18 +20,6 @@ public class AdminAnalyticsController {
 
     private final AnalyticsService analyticsService;
 
-    @GetMapping("/dashboard")
-    @Operation(summary = "Get dashboard summary statistics")
-    public ApiResponse<DashboardSummaryResponse> getDashboard() {
-        return ApiResponse.success("Dashboard loaded", analyticsService.getDashboard());
-    }
-
-    @GetMapping("/analytics")
-    @Operation(summary = "Get marketplace analytics for research questions")
-    public ApiResponse<AnalyticsResponse> getAnalytics() {
-        return ApiResponse.success("Analytics loaded", analyticsService.getAnalytics());
-    }
-
     @GetMapping("/reports")
     @Operation(summary = "Get monthly trend reports")
     public ApiResponse<ReportResponse> getReports() {
