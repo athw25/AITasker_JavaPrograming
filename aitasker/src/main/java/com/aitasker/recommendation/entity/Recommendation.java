@@ -26,6 +26,21 @@ public class Recommendation extends BaseEntity {
     @Column(nullable = false)
     private Double matchScore;
 
+    @Column(name = "skill_score", nullable = false)
+    private Double skillScore;
+
+    @Column(name = "rating_score", nullable = false)
+    private Double ratingScore;
+
+    @Column(name = "success_rate_score", nullable = false)
+    private Double successRateScore;
+
+    @Column(name = "experience_score", nullable = false)
+    private Double experienceScore;
+
+    @Column(name = "portfolio_score", nullable = false)
+    private Double portfolioScore; // Bổ sung để đáp ứng yêu cầu số 1
+
     @Column(nullable = false)
-    private boolean isAccepted = false; // Cờ theo dõi Client có thuê người này không
+    private boolean isAccepted = false;
 }
