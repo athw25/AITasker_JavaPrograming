@@ -3,7 +3,9 @@ package com.aitasker.payment.controller;
 import com.aitasker.common.response.ApiResponse;
 import com.aitasker.payment.entity.*;
 import com.aitasker.payment.enums.WithdrawalStatus;
+import com.aitasker.payment.repository.PaymentRepository;
 import com.aitasker.payment.service.*;
+import com.aitasker.payment.repository.PaymentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +23,7 @@ public class AdminPaymentController {
 
     private final PaymentService paymentService;
     private final EscrowService escrowService;
-
+    private final PaymentRepository paymentRepository;
     @GetMapping("/transactions")
     @Operation(summary = "Admin xem tất cả Transaction (read-only)")
     public ResponseEntity<ApiResponse<List<Transaction>>> getAllTransactions() {
@@ -34,6 +36,11 @@ public class AdminPaymentController {
             @RequestParam(defaultValue = "PENDING") WithdrawalStatus status
     ) {
         return ResponseEntity.ok(ApiResponse.success(escrowService.getWithdrawalsByStatus(status)));
+    }
+    @GetMapping
+    @Operation(summary = "Admin xem tất cả Payment")
+    public ResponseEntity<ApiResponse<List<Payment>>> getAllPayments() {
+        return ResponseEntity.ok(ApiResponse.success(paymentRepository.findAll()));
     }
 
     @PutMapping("/withdrawals/{id}/approve")

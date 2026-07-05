@@ -57,9 +57,14 @@ public class EscrowService {
         withdrawal.setStatus(WithdrawalStatus.APPROVED);
         withdrawal.setProcessedAt(LocalDateTime.now());
 
-        // Ghi Transaction WITHDRAWAL
-        // Cần payment tham chiếu — có thể dùng payment gần nhất của expert
-        // hoặc tạo payment riêng cho withdrawal (tùy kiến trúc nhóm)
+    Transaction transaction = Transaction.builder()
+            .payment(null)
+            .type(TransactionType.WITHDRAWAL)
+            .amount(withdrawal.getAmount())
+            .description("Withdrawal #" + withdrawalId
+                + " được duyệt — Expert #" + withdrawal.getExpert().getId())
+            .build();
+    transactionRepository.save(transaction);
 
         return withdrawalRepository.save(withdrawal);
     }

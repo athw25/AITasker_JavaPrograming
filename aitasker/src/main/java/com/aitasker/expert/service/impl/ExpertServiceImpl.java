@@ -43,4 +43,16 @@ public class ExpertServiceImpl implements ExpertService {
         ExpertProfile savedProfile = expertRepository.save(profile);
         return expertMapper.toDto(savedProfile);
     }
+
+    @Override
+    public java.util.List<ExpertProfileResponse> searchExpertsAdvanced(String skill, Double minRating, Integer minExperience) {
+        java.util.List<com.aitasker.expert.entity.ExpertProfile> experts = expertRepository.findAll();
+
+        return experts.stream()
+                .filter(expert -> skill == null || skill.isBlank() ||
+                        (expert.getSkills() != null && expert.getSkills().toLowerCase().contains(skill.toLowerCase())))
+                .filter(expert -> minExperience == null || expert.getExperienceYears() >= minExperience)
+                .map(expertMapper::toDto)
+                .collect(java.util.stream.Collectors.toList());
+    }
 }
