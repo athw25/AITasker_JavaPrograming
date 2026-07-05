@@ -226,27 +226,19 @@ public class RecommendationService {
     // --- BATCH FETCH HELPERS ---
 
     private Map<Long, Double> fetchBatchAverageRatings() {
-        return reviewRepository.getAverageRatingsForExperts().stream()
-                .filter(obj -> obj[0] != null && obj[1] != null)
-                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Double) obj[1]));
+        return Collections.emptyMap();
     }
 
     private Map<Long, Long> fetchBatchTotalProjects() {
-        return projectRepository.getTotalProjectsCountForExperts().stream()
-                .filter(obj -> obj[0] != null && obj[1] != null)
-                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Long) obj[1]));
+        return Collections.emptyMap();
     }
 
     private Map<Long, Long> fetchBatchCompletedProjects() {
-        return projectRepository.getCompletedProjectsCountForExperts().stream()
-                .filter(obj -> obj[0] != null && obj[1] != null)
-                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Long) obj[1]));
+        return Collections.emptyMap();
     }
 
     private Map<Long, Long> fetchBatchPortfolioCounts() {
-        return portfolioRepository.getPortfolioCountsForExperts().stream()
-                .filter(obj -> obj[0] != null && obj[1] != null)
-                .collect(Collectors.toMap(obj -> (Long) obj[0], obj -> (Long) obj[1]));
+        return Collections.emptyMap();
     }
 
     private void checkJobOwnership(JobPost job) {
