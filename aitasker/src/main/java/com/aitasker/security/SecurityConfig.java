@@ -47,7 +47,6 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**", "/sockjs/**").permitAll()
                         .requestMatchers("/websocket-test.html").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/email/test").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
