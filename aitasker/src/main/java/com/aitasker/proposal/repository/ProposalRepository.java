@@ -6,7 +6,7 @@ import com.aitasker.proposal.entity.Proposal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-
+import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
@@ -89,4 +89,10 @@ public interface ProposalRepository
     );
 
     long countByStatus(ProposalStatus status);
+    // Đếm tổng số Proposal toàn hệ thống
+    @Query("SELECT COUNT(p) FROM Proposal p")
+    long countTotalProposals();
+    // Đếm tổng số Proposal đã được Chấp nhận (ACCEPTED) toàn hệ thống
+    @Query("SELECT COUNT(p) FROM Proposal p WHERE p.status = com.aitasker.common.enums.ProposalStatus.ACCEPTED")
+    long countAcceptedProposals();
 }

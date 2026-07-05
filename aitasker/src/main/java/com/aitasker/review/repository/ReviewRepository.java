@@ -15,4 +15,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             """)
     Double getAverageRating();
 
+
+    // Tính điểm đánh giá trung bình theo từng chuyên gia
+    @Query("SELECT r.reviewee.id, AVG(CAST(r.rating AS double)) FROM Review r WHERE r.type = com.aitasker.common.enums.ReviewType.CLIENT_TO_EXPERT GROUP BY r.reviewee.id")
+    List<Object[]> getAverageRatingsForExperts();
 }
