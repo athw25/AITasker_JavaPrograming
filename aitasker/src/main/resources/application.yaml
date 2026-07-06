@@ -5,43 +5,30 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
-    url: ${DB_URL:jdbc:sqlserver://127.0.0.1:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true}
+    url: jdbc:sqlserver://${DB_HOST:127.0.0.1}:${DB_PORT:1433};databaseName=${DB_NAME:AITasker};encrypt=false;trustServerCertificate=true
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:Aa123456}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    show-sql: ${JPA_SHOW_SQL:true}
-    open-in-view: false
+      ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
 
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
   servlet:
     multipart:
       enabled: true
-      max-file-size: 20MB
-      max-request-size: 20MB
+      max-file-size: 10MB
+      max-request-size: 15MB
 
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info
   endpoint:
     health:
       show-details: never
@@ -50,41 +37,18 @@ app:
   jwt:
     secret: ${JWT_SECRET:aitasker-jwt-secret-key-must-be-at-least-32-characters}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
-    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
-  ai:
-    enabled: ${AI_ENABLED:false}
-    provider: ${AI_PROVIDER:openai}
-    gemini:
-      api-key: ${AI_GEMINI_API_KEY:}
-      model: ${AI_GEMINI_MODEL:gemini-2.0-flash}
-      base-url: ${AI_GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/models}
-      timeout-seconds: ${AI_TIMEOUT_SECONDS:30}
-      temperature: ${AI_TEMPERATURE:0.7}
-      max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}
-  openai:
-    api-key: ${OPENAI_API_KEY:}
-    model: ${OPENAI_MODEL:gpt-4o-mini}
-    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1/chat/completions}
-  mail:
-    enabled: ${MAIL_ENABLED:false}
-  upload:
-    dir: ${UPLOAD_DIR:uploads}
-    max-size-bytes: ${UPLOAD_MAX_SIZE_BYTES:10485760}
-    allowed-content-types: ${UPLOAD_ALLOWED_CONTENT_TYPES:application/pdf,image/jpeg,image/png,text/plain}
-  admin:
-    email: ${ADMIN_EMAIL:admin@aitasker.com}
-    password: ${ADMIN_PASSWORD:Admin@123}
-  ratelimit:
-    login:
-      max-attempts: ${LOGIN_RATE_LIMIT:5}
-      window-ms: ${LOGIN_RATE_WINDOW_MS:60000}
-  security:
-    login:
-      max-failed-attempts: ${LOGIN_MAX_FAILED_ATTEMPTS:5}
-      lock-minutes: ${LOGIN_LOCK_MINUTES:15}
+
+ai:
+  enabled: ${AI_ENABLED:false}
+  provider: ${AI_PROVIDER:gemini}
+  gemini:
+    api-key: ${AI_GEMINI_API_KEY:}
+    model: ${AI_GEMINI_MODEL:gemini-2.0-flash}
+    base-url: https://generativelanguage.googleapis.com/v1beta/models
+    timeout-seconds: 30
+    temperature: 0.7
+    max-output-tokens: 2048
 
 file:
   upload:
-    dir: ${FILE_UPLOAD_DIR:${UPLOAD_DIR:uploads}}
+    dir: ${FILE_UPLOAD_DIR:uploads}

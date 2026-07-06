@@ -1,19 +1,14 @@
 package com.aitasker.ai.openai;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 
-@ConfigurationProperties(prefix = "app.openai")
-public record OpenAiConfig(
-        String apiKey,
-        String model,
-        String baseUrl
-) {
-    public OpenAiConfig {
-        if (model == null || model.isBlank()) model = "gpt-4o-mini";
-        if (baseUrl == null || baseUrl.isBlank()) baseUrl = "https://api.openai.com/v1/chat/completions";
-    }
+@Configuration
+public class OpenAiConfig {
 
-    public boolean isConfigured() {
-        return apiKey != null && !apiKey.isBlank();
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }

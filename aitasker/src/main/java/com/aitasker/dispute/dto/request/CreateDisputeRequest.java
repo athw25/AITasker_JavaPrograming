@@ -8,10 +8,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class CreateDisputeRequest {
+
     @NotNull(message = "projectId không được để trống")
     private Long projectId;
-
-    private Long milestoneId;
 
     @NotBlank(message = "reason không được để trống")
     private String reason;

@@ -13,7 +13,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/jobs")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminJobController {
 
     private final AdminJobService adminJobService;

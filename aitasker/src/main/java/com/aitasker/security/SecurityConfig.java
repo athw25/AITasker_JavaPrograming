@@ -3,7 +3,6 @@ package com.aitasker.security;
 
 import com.aitasker.security.jwt.JwtFilter;
 import com.aitasker.security.jwt.JwtProperties;
-import com.aitasker.security.ratelimit.RateLimitingFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -27,8 +26,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    private final RateLimitingFilter rateLimitingFilter;
-    private final CorsConfigurationSource corsConfigurationSource;
 
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
@@ -53,14 +50,11 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**", "/sockjs/**").permitAll()
                         .requestMatchers("/websocket-test.html").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/email/test").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/expert/**").hasAnyRole("EXPERT", "ADMIN")
                         .requestMatchers("/api/client/**").hasAnyRole("CLIENT", "ADMIN")
-                        .requestMatchers("/api/email/**").authenticated()
-                        .requestMatchers("/api/audit/**").hasRole("ADMIN")
 
                         .requestMatchers("/api/users/**")
                         .authenticated()
@@ -70,9 +64,7 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
-                )
-                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+)                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

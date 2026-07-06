@@ -3,6 +3,7 @@ package com.aitasker.admin.controller;
 import com.aitasker.admin.dto.UserSummaryResponse;
 import com.aitasker.admin.service.AdminUserService;
 import com.aitasker.common.response.ApiResponse;
+import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -12,23 +13,27 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
     @GetMapping
-    public List<UserSummaryResponse> getAllUsers() {
-        return adminUserService.getAllUsers();
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<List<UserSummaryResponse>> getAllUsers() {
+        return ApiResponse.success(
+                adminUserService.getAllUsers());
     }
-
     @PutMapping("/{id}/ban")
-    public ApiResponse<UserSummaryResponse> banUser(@PathVariable Long id) {
-        return ApiResponse.success(adminUserService.banUser(id));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> banUser(@PathVariable Long id) {
+        adminUserService.banUser(id);
+        return ApiResponse.success("BanUser successfully");
     }
 
     @PutMapping("/{id}/unban")
-    public ApiResponse<UserSummaryResponse> unbanUser(@PathVariable Long id) {
-        return ApiResponse.success(adminUserService.unbanUser(id));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<String> unbanUser(@PathVariable Long id) {
+        adminUserService.unbanUser(id);
+        return ApiResponse.success("UnbanUser successfully");
     }
 }
