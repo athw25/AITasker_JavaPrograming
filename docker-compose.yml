@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: aitasker-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${DB_PASSWORD:-Aa123456} #sửa pass theo pass cấu hình trong coinatainer của bạn
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $$SA_PASSWORD -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./aitasker
+      dockerfile: Dockerfile
+    container_name: aitasker-backend
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      DB_URL: "jdbc:sqlserver://sqlserver:1433;databaseName=AITasker;encrypt=false;trustServerCertificate=true"
+      DB_USERNAME: sa
+      DB_PASSWORD: ${DB_PASSWORD:-Aa123456} #sửa pass theo pass cấu hình trong coinatainer của bạn
+      JWT_SECRET: ${JWT_SECRET}
+      SPRING_PROFILES_ACTIVE: prod
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  sqlserver_data:
+  uploads_data:

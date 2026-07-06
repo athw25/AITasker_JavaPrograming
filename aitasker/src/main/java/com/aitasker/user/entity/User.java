@@ -35,7 +35,7 @@ public class User extends BaseEntity {
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "failed_login_attempts", columnDefinition = "INT DEFAULT 0")

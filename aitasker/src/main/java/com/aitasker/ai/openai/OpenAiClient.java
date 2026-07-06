@@ -1,62 +1,76 @@
-// OpenAiClient.java
 package com.aitasker.ai.openai;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.*;
-import java.util.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
 @Component
+@EnableConfigurationProperties(OpenAiConfig.class)
 public class OpenAiClient {
 
-    private final RestTemplate restTemplate;
-    // Thay thế bằng API Key OpenAI thực tế của bạn hoặc nhóm
-    private final String apiKey = "YOUR_OPENAI_API_KEY_HERE";
-    private final String apiUrl = "https://api.openai.com/v1/chat/completions";
+    private final OpenAiConfig config;
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public OpenAiClient(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public OpenAiClient(OpenAiConfig config) {
+        this.config = config;
     }
 
-    public String generate(String systemPrompt, String userPrompt) {
+    public boolean isAvailable() {
+        return config.isConfigured();
+    }
+
+    public String chat(String systemPrompt, String userPrompt) {
+        if (!config.isConfigured()) {
+            throw new IllegalStateException("OpenAI API key chưa được cấu hình");
+        }
+
+        Map<String, Object> body = Map.of(
+                "model", config.model(),
+                "messages", List.of(
+                        Map.of("role", "system", "content", systemPrompt),
+                        Map.of("role", "user", "content", userPrompt)
+                ),
+                "temperature", 0.7
+        );
+
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
+            String json = objectMapper.writeValueAsString(body);
 
-            // Cấu trúc Body Request chuẩn theo tài liệu API OpenAI
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-3.5-turbo"); // Đổi .set thành .put
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(config.baseUrl()))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + config.apiKey())
+                    .timeout(Duration.ofSeconds(30))
+                    .POST(HttpRequest.BodyPublishers.ofString(json))
+                    .build();
 
-            List<Map<String, String>> messages = new ArrayList<>();
-            messages.add(Map.of("role", "system", "content", systemPrompt));
-            messages.add(Map.of("role", "user", "content", userPrompt));
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-            requestBody.put("messages", messages);      // Đổi .set thành .put
-            requestBody.put("temperature", 0.7);        // Đổi .set thành .put
-
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, entity, Map.class);
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                // 1. Chỉ định rõ List chứa các Map
-                List<?> choices = (List<?>) response.getBody().get("choices");
-
-                // 2. Chỉ định rõ Map nhận vào cặp dữ liệu String, Object
-                Map<?, ?> firstChoice = (Map<?, ?>) choices.get(0);
-                Map<?, ?> message = (Map<?, ?>) firstChoice.get("message");
-
-                return (String) message.get("content");
-            } else{
-                throw new RuntimeException("Gọi API OpenAI thất bại, HTTP Status: " + response.getStatusCode());
+            if (response.statusCode() >= 300) {
+                log.warn("OpenAI API trả lỗi status={}", response.statusCode());
+                throw new IllegalStateException("OpenAI API lỗi: " + response.statusCode());
             }
+
+            JsonNode root = objectMapper.readTree(response.body());
+            return root.path("choices").path(0).path("message").path("content").asText();
 
         } catch (Exception e) {
-            // Khi không có API Key thực tế hoặc lỗi mạng, trả về chuỗi JSON giả lập đúng cấu trúc để tránh crash hệ thống
-            if (systemPrompt.contains("Job Assistant")) {
-                return "{\"title\":\"Chuyên viên lập trình Java (Giả lập)\",\"description\":\"Phát triển hệ thống backend.\",\"skills\":[\"Java\",\"Spring Boot\"],\"budgetSuggestion\":\"15 - 20 triệu\"}";
-            } else {
-                return "{\"serviceDescription\":\"Dịch vụ AI tối ưu (Giả lập)\",\"tags\":[\"AI\",\"Java\"],\"pricingSuggestion\":\"5.000.000 VND\"}";
-            }
+            log.error("Lỗi gọi OpenAI API", e);
+            throw new IllegalStateException("Không thể gọi OpenAI API: " + e.getMessage(), e);
         }
     }
 }

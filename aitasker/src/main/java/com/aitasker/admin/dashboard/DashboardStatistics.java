@@ -1,24 +1,27 @@
 package com.aitasker.admin.dashboard;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DashboardStatistics{
-    //User stats
+public class DashboardStatistics {
     private long totalUsers;
     private long totalClients;
     private long totalExperts;
-    //Job stats
     private long totalJobs;
-    private long openJobs;
-    private long completedJobs;
-    // Project stats
+    private long totalProposals;
     private long totalProjects;
     private long completedProjects;
-    //Review stats
-    private long totalReviews;
+    private double projectCompletionRate;
+    private double proposalAcceptanceRate;
+    private BigDecimal totalRevenue;
+    private long totalDisputes;
+    private long openDisputes;
 }
