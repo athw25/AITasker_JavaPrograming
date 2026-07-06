@@ -9,7 +9,6 @@ import com.aitasker.exception.ForbiddenException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.job.entity.JobPost;
 import com.aitasker.job.repository.JobPostRepository;
-import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.notification.service.NotificationService;
 import com.aitasker.project.service.ProjectService;
 import com.aitasker.proposal.dto.request.ProposalRequestDTO;
@@ -38,7 +37,6 @@ public class ProposalService {
 
     private final ProjectService projectService;
     private final NotificationService notificationService;
-    private final AnalyticsService analyticsService;
 
     // 1. CHUYÊN GIA NỘP ĐỀ XUẤT
     @Transactional
@@ -79,7 +77,6 @@ public class ProposalService {
                 expert.getName() + " vừa gửi đề xuất cho công việc \"" + job.getTitle() + "\" của bạn.",
                 "PROPOSAL_CREATED"
         );
-        analyticsService.record("PROPOSAL_CREATED", proposal.getId(), null);
 
         return mapToDTO(proposal);
     }
@@ -109,18 +106,6 @@ public class ProposalService {
                 .toList();
     }
 
-    public ProposalResponseDTO getProposalDetail(Long proposalId, Long currentUserId, boolean isAdmin) {
-        Proposal proposal = getProposalById(proposalId);
-
-        boolean isOwner = proposal.getExpert().getId().equals(currentUserId);
-        boolean isJobOwner = proposal.getJob().getClient().getId().equals(currentUserId);
-        if (!isAdmin && !isOwner && !isJobOwner) {
-            throw new ForbiddenException("Bạn không có quyền xem đề xuất này.");
-        }
-
-        return mapToDTO(proposal);
-    }
-
     // 3. KHÁCH HÀNG CHẤP NHẬN ĐỀ XUẤT
     @Transactional
     public void acceptProposal(Long proposalId, Long clientId) {
@@ -148,7 +133,6 @@ public class ProposalService {
                 "Đề xuất của bạn cho công việc \"" + proposal.getJob().getTitle() + "\" đã được chấp nhận.",
                 "PROPOSAL_ACCEPTED"
         );
-        analyticsService.record("PROPOSAL_ACCEPTED", proposal.getId(), null);
     }
 
     // 4. KHÁCH HÀNG TỪ CHỐI ĐỀ XUẤT
