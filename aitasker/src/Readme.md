@@ -1,10 +1,8 @@
-#Chạy chương trình BE: ..\AITasker_JavaPrograming\aitasker
-.\mvnw.cmd clean compile
-.\mvnw.cmd spring-boot:run
+#Chạy chương trình: ..\AITasker_JavaPrograming\aitasker
 
-#Chạy FE: cd frontend-aitasker
-npm install
-npm run dev
+.\mvnw.cmd clean compile
+
+.\mvnw.cmd spring-boot:run
 
 #Tài khoản admin hiện tại:
 Email:    admin@aitasker.com

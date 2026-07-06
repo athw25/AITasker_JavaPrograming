@@ -78,39 +78,4 @@ public class PaymentController {
         List<Transaction> transactions = paymentService.getTransactionHistory(paymentId);
         return ResponseEntity.ok(ApiResponse.success(transactions));
     }
-
-    @GetMapping("/transactions/me")
-    @PreAuthorize("hasRole('EXPERT')")
-    @Operation(summary = "Xem lịch sử giao dịch của Expert đang đăng nhập")
-    public ResponseEntity<ApiResponse<List<Transaction>>> getMyTransactions(
-            @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
-        Long expertId = userDetails.getUser().getId();
-        List<Transaction> transactions = paymentService.getTransactionHistoryForExpert(expertId);
-        return ResponseEntity.ok(ApiResponse.success(transactions));
-    }
-
-    @PutMapping("/{paymentId}/release")
-    @PreAuthorize("hasRole('CLIENT')")
-    @Operation(summary = "Release tiền cho Expert theo paymentId", description = "Client giải ngân sau khi Milestone APPROVED")
-    public ResponseEntity<ApiResponse<Payment>> releaseByPaymentId(
-            @PathVariable Long paymentId,
-            @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
-        ReleaseRequest request = new ReleaseRequest();
-        request.setPaymentId(paymentId);
-        Long clientId = userDetails.getUser().getId();
-        Payment payment = paymentService.release(request, clientId);
-        return ResponseEntity.ok(ApiResponse.success(payment));
-    }
-
-    @PutMapping("/{id}/refund")
-    @PreAuthorize("hasRole('ADMIN')")
-    @Operation(summary = "Admin hoàn tiền Payment đang HELD", description = "Dùng khi xử lý Dispute")
-    public ResponseEntity<ApiResponse<Payment>> refund(
-            @PathVariable Long id,
-            @RequestParam(required = false) String reason
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(paymentService.refund(id, reason)));
-    }
 }
