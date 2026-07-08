@@ -1,0 +1,28 @@
+meta {
+  name: Create Proposal
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/proposals
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{expertToken}}
+}
+
+body:json {
+  {
+    "jobId": {{jobId}},
+    "bidAmount": 2300.00,
+    "duration": 10,
+    "coverLetter": "Bruno test proposal"
+  }
+}
+
+script:post-response {
+  bru.setVar("proposalId", res.body.data ? res.body.data.id : res.body.id);
+}

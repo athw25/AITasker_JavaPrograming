@@ -1,0 +1,21 @@
+meta {
+  name: Login Expert
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+}
+
+body:json {
+  {
+    "email": "expert1@aitasker.com",
+    "password": "Demo@123"
+  }
+}
+
+script:post-response {
+  bru.setVar("expertToken", res.body.token);
+}

@@ -1,0 +1,21 @@
+meta {
+  name: AI Job Assistant
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/ai/job-assistant
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{clientToken}}
+}
+
+body:json {
+  {
+    "prompt": "Toi muon chatbot ban hang Facebook"
+  }
+}

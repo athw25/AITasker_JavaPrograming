@@ -1,0 +1,21 @@
+meta {
+  name: Login Client
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+}
+
+body:json {
+  {
+    "email": "client1@aitasker.com",
+    "password": "Demo@123"
+  }
+}
+
+script:post-response {
+  bru.setVar("clientToken", res.body.token);
+}

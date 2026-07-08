@@ -1,0 +1,27 @@
+meta {
+  name: Create Project
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/projects
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{clientToken}}
+}
+
+body:json {
+  {
+    "proposalId": {{proposalId}},
+    "startDate": "2026-07-10",
+    "endDate": "2026-08-10"
+  }
+}
+
+script:post-response {
+  bru.setVar("projectId", res.body.data ? res.body.data.id : res.body.id);
+}

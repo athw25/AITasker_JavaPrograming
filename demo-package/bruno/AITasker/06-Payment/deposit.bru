@@ -1,0 +1,22 @@
+meta {
+  name: Deposit Escrow
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/payments/deposit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{clientToken}}
+}
+
+body:json {
+  {
+    "projectId": {{projectId}},
+    "amount": 900.00
+  }
+}
