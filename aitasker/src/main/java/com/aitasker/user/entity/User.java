@@ -2,6 +2,7 @@ package com.aitasker.user.entity;
 
 import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.common.enums.Role;
+import com.aitasker.common.enums.UserStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -30,4 +31,8 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
 }

@@ -16,6 +16,12 @@ public interface PaymentService {
     // Lấy danh sách giao dịch của một payment
     List<Transaction> getTransactionHistory(Long paymentId);
 
+    // Lấy lịch sử giao dịch của Expert đang đăng nhập
+    List<Transaction> getTransactionHistoryForExpert(Long expertId);
+
     // Lấy tất cả giao dịch (dành cho Admin)
     List<Transaction> getAllTransactions();
+
+    // Hoàn tiền Payment đang HELD (dùng cho Dispute resolution)
+    Payment refund(Long paymentId, String reason);
 }
