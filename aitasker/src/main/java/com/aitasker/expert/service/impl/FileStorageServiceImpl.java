@@ -11,15 +11,19 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.*;
 import java.util.UUID;
+import com.aitasker.security.file.FileSecurityService;
+
 
 @Service
 public class FileStorageServiceImpl implements FileStorageService {
 
     private final AttachmentRepository attachmentRepository;
+    private final FileSecurityService fileSecurityService;
     private final Path rootLocation = Paths.get("uploads");
 
-    public FileStorageServiceImpl(AttachmentRepository attachmentRepository) {
+    public FileStorageServiceImpl(AttachmentRepository attachmentRepository, FileSecurityService fileSecurityService) {
         this.attachmentRepository = attachmentRepository;
+        this.fileSecurityService = fileSecurityService;
         try {
             Files.createDirectories(rootLocation); // Tự động tạo folder vật lý 'uploads' nếu chưa có
         } catch (IOException e) {
@@ -29,6 +33,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public Attachment uploadFile(MultipartFile file, Long currentUserId) {
+        fileSecurityService.validateFile(file);
         try {
             if (file.isEmpty()) {
                 throw new RuntimeException("File tải lên không hợp lệ hoặc trống!");
@@ -59,6 +64,15 @@ public class FileStorageServiceImpl implements FileStorageService {
     public Resource downloadFile(Long fileId) {
         Attachment attachment = attachmentRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy tệp tin yêu cầu trong hệ thống!"));
+
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.aitasker.security.userdetails.CustomUserDetails userDetails) {
+            com.aitasker.user.entity.User currentUser = userDetails.getUser();
+            fileSecurityService.checkDownloadAccess(attachment, currentUser);
+        } else {
+            throw new org.springframework.security.access.AccessDeniedException("Yêu cầu đăng nhập để truy cập tệp tin!");
+        }
+
         try {
             Path file = Paths.get(attachment.getFilePath());
             Resource resource = new UrlResource(file.toUri());
@@ -86,7 +100,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             // Xóa file vật lý ổ cứng trước
             Path file = Paths.get(attachment.getFilePath());
             Files.deleteIfExists(file);
-            
+
             // Xóa bản ghi trong Database sau
             attachmentRepository.delete(attachment);
         } catch (IOException e) {
