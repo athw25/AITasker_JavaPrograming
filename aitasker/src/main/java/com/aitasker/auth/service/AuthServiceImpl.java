@@ -11,6 +11,12 @@ import com.aitasker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.aitasker.audit.service.AuditLogService;
+
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
+
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +26,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final ExpertProfileRepository expertProfileRepository;
+    private final AuditLogService auditLogService;
+
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -67,22 +75,34 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        // 1. Tìm user trong Database dựa vào email
-        com.aitasker.user.entity.User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Email hoặc mật khẩu không đúng!"));
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        String ipAddress = "UNKNOWN";
+        if (attributes != null) {
+            HttpServletRequest req = attributes.getRequest();
+            String xff = req.getHeader("X-Forwarded-For");
+            if (xff != null && !xff.isEmpty()) {
+                ipAddress = xff.split(",")[0].trim();
+            } else {
+                ipAddress = req.getRemoteAddr();
+            }
+        }
 
-        // 2. Kiểm tra mật khẩu
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        com.aitasker.user.entity.User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        if (user == null) {
+            auditLogService.log("LOGIN_FAILED", "Email không tồn tại: " + request.getEmail(), request.getEmail(), ipAddress);
             throw new IllegalArgumentException("Email hoặc mật khẩu không đúng!");
         }
 
-        // Gói Entity User (của TV2) vào trong CustomUserDetails (của TV3)
-        com.aitasker.security.userdetails.CustomUserDetails userDetails = new com.aitasker.security.userdetails.CustomUserDetails(user);
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            auditLogService.log("LOGIN_FAILED", "Sai mật khẩu", request.getEmail(), ipAddress);
+            throw new IllegalArgumentException("Email hoặc mật khẩu không đúng!");
+        }
 
-        // 4. Sinh JWT Token
+        com.aitasker.security.userdetails.CustomUserDetails userDetails = new com.aitasker.security.userdetails.CustomUserDetails(user);
         String jwtToken = jwtService.generateToken(userDetails);
 
-        // 5. Trả token về cho Client
+        auditLogService.log("LOGIN_SUCCESS", "Đăng nhập thành công", user.getEmail(), ipAddress);
+
         return AuthResponse.builder()
                 .token(jwtToken)
                 .message("Đăng nhập thành công!")
