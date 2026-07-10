@@ -11,6 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import com.aitasker.recommendation.dto.request.RecommendationFeedbackRequest;
+import com.aitasker.recommendation.dto.response.RecommendationFeedbackResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -53,5 +56,19 @@ public class RecommendationController {
     public ApiResponse<RecommendationAnalyticsResponse> getRecommendationAnalytics() {
         RecommendationAnalyticsResponse analytics = recommendationService.getAnalytics();
         return ApiResponse.success("Lấy thông tin Analytics thành công", analytics);
+    }
+
+    @Operation(summary = "Lưu feedback đề xuất chuyên gia (TV4 Bổ sung)")
+    @PostMapping("/recommendations/feedback")
+    public ApiResponse<RecommendationFeedbackResponse> saveFeedback(@Valid @RequestBody RecommendationFeedbackRequest request) {
+        RecommendationFeedbackResponse response = recommendationService.saveFeedback(request);
+        return ApiResponse.success("Lưu feedback đề xuất thành công", response);
+    }
+
+    @Operation(summary = "Lấy lịch sử feedback đề xuất của một công việc (TV4 Bổ sung)")
+    @GetMapping("/recommendations/feedback/history/{jobId}")
+    public ApiResponse<List<RecommendationFeedbackResponse>> getFeedbackHistoryForJob(@PathVariable Long jobId) {
+        List<RecommendationFeedbackResponse> history = recommendationService.getFeedbackHistoryForJob(jobId);
+        return ApiResponse.success("Lấy lịch sử feedback đề xuất thành công", history);
     }
 }
