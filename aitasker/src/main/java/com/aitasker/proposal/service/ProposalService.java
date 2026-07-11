@@ -37,6 +37,7 @@ public class ProposalService {
 
     private final ProjectService projectService;
     private final NotificationService notificationService;
+    private final RecommendationService recommendationService;
 
     // 1. CHUYÊN GIA NỘP ĐỀ XUẤT
     @Transactional
@@ -204,6 +205,4 @@ public class ProposalService {
                 .submittedAt(proposal.getSubmittedAt())
                 .build();
     }
-    private final RecommendationService recommendationService;
-
 }

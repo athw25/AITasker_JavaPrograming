@@ -6,6 +6,7 @@ import com.aitasker.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -114,4 +115,11 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             User client,
             User expert
     );
+
+    @Query("SELECT p.expert.id, COUNT(p) FROM Project p WHERE p.status = com.aitasker.common.enums.ProjectStatus.COMPLETED GROUP BY p.expert.id")
+    List<Object[]> getCompletedProjectsCountForExperts();
+
+    @Query("SELECT p.expert.id, COUNT(p) FROM Project p GROUP BY p.expert.id")
+    List<Object[]> getTotalProjectsCountForExperts();
+
 }

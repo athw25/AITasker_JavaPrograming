@@ -15,6 +15,10 @@ import com.aitasker.recommendation.dto.response.RecommendationAnalyticsResponse;
 import com.aitasker.recommendation.dto.response.RecommendationResponseDTO;
 import com.aitasker.recommendation.entity.Recommendation;
 import com.aitasker.recommendation.repository.RecommendationRepository;
+import com.aitasker.recommendation.repository.RecommendationFeedbackRepository;
+import com.aitasker.recommendation.entity.RecommendationFeedback;
+import com.aitasker.recommendation.dto.request.RecommendationFeedbackRequest;
+import com.aitasker.recommendation.dto.response.RecommendationFeedbackResponse;
 import com.aitasker.review.repository.ReviewRepository;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
@@ -45,6 +49,8 @@ public class RecommendationService {
     private final ProjectRepository projectRepository;
     private final PortfolioRepository portfolioRepository;
     private final ProposalRepository proposalRepository;
+    private final RecommendationFeedbackRepository recommendationFeedbackRepository;
+
 
     // 1. CẬP NHẬT FEEDBACK KHI CLIENT THUÊ EXPERT
     @Transactional
@@ -226,19 +232,47 @@ public class RecommendationService {
     // --- BATCH FETCH HELPERS ---
 
     private Map<Long, Double> fetchBatchAverageRatings() {
-        return Collections.emptyMap();
+        Map<Long, Double> map = new HashMap<>();
+        List<Object[]> results = reviewRepository.getAverageRatingsForExperts();
+        for (Object[] row : results) {
+            Long expertId = (Long) row[0];
+            Double avgRating = (Double) row[1];
+            map.put(expertId, avgRating);
+        }
+        return map;
     }
 
     private Map<Long, Long> fetchBatchTotalProjects() {
-        return Collections.emptyMap();
+        Map<Long, Long> map = new HashMap<>();
+        List<Object[]> results = projectRepository.getTotalProjectsCountForExperts();
+        for (Object[] row : results) {
+            Long expertId = (Long) row[0];
+            Long count = (Long) row[1];
+            map.put(expertId, count);
+        }
+        return map;
     }
 
     private Map<Long, Long> fetchBatchCompletedProjects() {
-        return Collections.emptyMap();
+        Map<Long, Long> map = new HashMap<>();
+        List<Object[]> results = projectRepository.getCompletedProjectsCountForExperts();
+        for (Object[] row : results) {
+            Long expertId = (Long) row[0];
+            Long count = (Long) row[1];
+            map.put(expertId, count);
+        }
+        return map;
     }
 
     private Map<Long, Long> fetchBatchPortfolioCounts() {
-        return Collections.emptyMap();
+        Map<Long, Long> map = new HashMap<>();
+        List<Object[]> results = portfolioRepository.getPortfolioCountsForExperts();
+        for (Object[] row : results) {
+            Long expertId = (Long) row[0];
+            Long count = (Long) row[1];
+            map.put(expertId, count);
+        }
+        return map;
     }
 
     private void checkJobOwnership(JobPost job) {
@@ -266,5 +300,62 @@ public class RecommendationService {
                 .isAccepted(rec.isAccepted())
                 .createdAt(rec.getCreatedAt())
                 .build();
+    }
+
+    // 6. LƯU FEEDBACK ĐỀ XUẤT (Bổ sung)
+    @Transactional
+    public RecommendationFeedbackResponse saveFeedback(RecommendationFeedbackRequest request) {
+        JobPost job = jobPostRepository.findById(request.getJobId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Job ID: " + request.getJobId()));
+
+        User expert = userRepository.findById(request.getExpertId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Expert ID: " + request.getExpertId()));
+
+        checkJobOwnership(job);
+
+        RecommendationFeedback feedback = recommendationFeedbackRepository.findByJobIdAndExpertId(request.getJobId(), request.getExpertId())
+                .orElse(new RecommendationFeedback());
+
+        feedback.setJob(job);
+        feedback.setExpert(expert);
+        feedback.setRecommended(request.isRecommended());
+        feedback.setHired(request.isHired());
+
+        recommendationFeedbackRepository.save(feedback);
+
+        if (request.isHired()) {
+            markAsAccepted(request.getJobId(), request.getExpertId());
+        }
+
+        return RecommendationFeedbackResponse.builder()
+                .feedbackId(feedback.getId())
+                .jobId(job.getId())
+                .expertId(expert.getId())
+                .expertName(expert.getName())
+                .recommended(feedback.isRecommended())
+                .hired(feedback.isHired())
+                .createdAt(feedback.getCreatedAt())
+                .build();
+    }
+
+    // 7. LẤY LỊCH SỬ FEEDBACK CHO MỘT JOB (API Bổ sung)
+    @Transactional(readOnly = true)
+    public List<RecommendationFeedbackResponse> getFeedbackHistoryForJob(Long jobId) {
+        JobPost job = jobPostRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy Job ID: " + jobId));
+
+        checkJobOwnership(job);
+
+        return recommendationFeedbackRepository.findByJobId(jobId).stream()
+                .map(fb -> RecommendationFeedbackResponse.builder()
+                        .feedbackId(fb.getId())
+                        .jobId(fb.getJob().getId())
+                        .expertId(fb.getExpert().getId())
+                        .expertName(fb.getExpert().getName())
+                        .recommended(fb.isRecommended())
+                        .hired(fb.isHired())
+                        .createdAt(fb.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
     }
 }
