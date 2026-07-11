@@ -12,6 +12,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import com.aitasker.security.userdetails.CustomUserDetails;
+import org.springframework.security.access.AccessDeniedException;
+
 
 @RestController
 @RequestMapping("/api/files")
@@ -28,7 +33,11 @@ public class FileStorageController {
     @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Tải tập tin mới lên hệ thống (Portfolio, Delivery, Project Attachments)")
     public ApiResponse<Attachment> uploadFile(@RequestParam("file") MultipartFile file) {
-        Long currentUserId = 1L; // Tạm thời giả lập ID người dùng đăng nhập để test
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new AccessDeniedException("Yêu cầu đăng nhập để upload tệp tin!");
+        }
+        Long currentUserId = userDetails.getUser().getId();
         Attachment attachment = fileStorageService.uploadFile(file, currentUserId);
         return ApiResponse.success("Tải tập tin lên hệ thống thành công!", attachment);
     }
@@ -46,7 +55,11 @@ public class FileStorageController {
     @PreAuthorize("hasRole('EXPERT')")
     @Operation(summary = "Xóa tập tin đính kèm khỏi hệ thống theo ID")
     public ApiResponse<Void> deleteFile(@PathVariable Long id) {
-        Long currentUserId = 1L; // Tạm thời giả lập ID
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof CustomUserDetails userDetails)) {
+            throw new AccessDeniedException("Yêu cầu đăng nhập để xóa tệp tin!");
+        }
+        Long currentUserId = userDetails.getUser().getId();
         fileStorageService.deleteFile(id, currentUserId);
         return ApiResponse.success("Xóa tập tin khỏi hệ thống thành công!", null);
     }

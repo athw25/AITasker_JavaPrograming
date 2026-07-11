@@ -16,11 +16,13 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final EmailService emailService;
 
     @Transactional
     public Notification createNotification(
@@ -56,6 +58,15 @@ public class NotificationService {
                 "/queue/notifications",
                 saved
         );
+
+        // Gửi email thông báo song song
+        if (recipient.getEmail() != null) {
+            try {
+                emailService.sendEmail(recipient.getEmail(), "[AITasker] " + title, content);
+            } catch (Exception e) {
+                log.error("Failed to send notification email to {}: {}", recipient.getEmail(), e.getMessage());
+            }
+        }
 
         return saved;
     }
