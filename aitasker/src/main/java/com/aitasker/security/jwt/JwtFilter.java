@@ -68,13 +68,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                if (!userDetails.isEnabled()) {
-                    log.debug("Rejected token for disabled/banned user '{}'", username);
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-
-                if (jwtService.isTokenValid(token, userDetails) && userDetails.isEnabled()) {
+                if (jwtService.isTokenValid(token, userDetails)) {
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(

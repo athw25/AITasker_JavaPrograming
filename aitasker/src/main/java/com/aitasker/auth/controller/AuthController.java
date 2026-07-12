@@ -3,7 +3,6 @@ package com.aitasker.auth.controller;
 
 import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
-import com.aitasker.auth.dto.RefreshTokenRequest;
 import com.aitasker.auth.dto.RegisterRequest;
 import com.aitasker.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -27,15 +26,5 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
-
-    @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
-        return ResponseEntity.ok(authService.refresh(request.getRefreshToken()));
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authService.logout(request.getRefreshToken());
-        return ResponseEntity.ok().build();
-    }
+    // review: integration chưa hoàn tất
 }
