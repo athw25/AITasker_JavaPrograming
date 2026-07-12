@@ -17,4 +17,7 @@ public class LoginRequest {
 
     @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
+
+    /** Khi true: Refresh Token được cấp với thời hạn dài hơn (xem app.security.remember-me-expiration-days). */
+    private boolean rememberMe = false;
 }

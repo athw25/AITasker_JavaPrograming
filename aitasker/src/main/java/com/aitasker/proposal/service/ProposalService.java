@@ -1,6 +1,8 @@
 // ProposalService.java
 package com.aitasker.proposal.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.JobStatus;
 import com.aitasker.common.enums.ProposalStatus;
 import com.aitasker.common.response.PageResponse;
@@ -37,6 +39,7 @@ public class ProposalService {
 
     private final ProjectService projectService;
     private final NotificationService notificationService;
+    private final AnalyticsService analyticsService;
 
     // 1. CHUYÊN GIA NỘP ĐỀ XUẤT
     @Transactional
@@ -69,6 +72,9 @@ public class ProposalService {
         proposal.setSubmittedAt(LocalDateTime.now());
 
         proposal = proposalRepository.save(proposal);
+
+        analyticsService.recordEvent(AnalyticsEventType.PROPOSAL_SUBMITTED, expertId,
+                expert.getRole().name(), "Proposal", proposal.getId().toString());
 
         // Thông báo cho Client biết có đề xuất mới cho Job của họ
         notificationService.createNotification(
@@ -128,6 +134,10 @@ public class ProposalService {
 
         // 3. THÊM DÒNG NÀY ĐỂ KÍCH HOẠT FEEDBACK GIAI ĐOẠN 5
         recommendationService.markAsAccepted(proposal.getJob().getId(), proposal.getExpert().getId());
+
+        analyticsService.recordEvent(AnalyticsEventType.PROPOSAL_ACCEPTED, clientId,
+                "CLIENT", "Proposal", proposal.getId().toString());
+
         // Thông báo cho Expert biết đề xuất của họ đã được chấp nhận
         notificationService.createNotification(
                 proposal.getExpert().getId(),
@@ -151,6 +161,9 @@ public class ProposalService {
 
         proposal.setStatus(ProposalStatus.REJECTED);
         proposalRepository.save(proposal);
+
+        analyticsService.recordEvent(AnalyticsEventType.PROPOSAL_REJECTED, clientId,
+                "CLIENT", "Proposal", proposal.getId().toString());
 
         // Thông báo cho Expert biết đề xuất của họ bị từ chối
         notificationService.createNotification(

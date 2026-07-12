@@ -3,6 +3,7 @@ package com.aitasker.security;
 
 import com.aitasker.security.jwt.JwtFilter;
 import com.aitasker.security.jwt.JwtProperties;
+import com.aitasker.security.ratelimit.RateLimitingFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +29,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    //private final RateLimitingFilter rateLimitingFilter;
+    private final RateLimitingFilter rateLimitingFilter;
 
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
@@ -77,7 +78,8 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler)
-)                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+)                .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

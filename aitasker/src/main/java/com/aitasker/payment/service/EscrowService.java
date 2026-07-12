@@ -1,5 +1,7 @@
 package com.aitasker.payment.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.exception.BadRequestException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.payment.dto.WithdrawalRequest;
@@ -24,17 +26,25 @@ public class EscrowService {
     private final TransactionRepository transactionRepository;
     private final WithdrawalRepository withdrawalRepository;
     private final UserRepository userRepository;
+    private final AnalyticsService analyticsService;
 
     // Expert tạo yêu cầu rút tiền
     public Withdrawal requestWithdrawal(WithdrawalRequest request, Long expertId) {
         User expert = userRepository.findById(expertId)
                 .orElseThrow(() -> new ResourceNotFoundException("Expert không tìm thấy"));
 
-        // Tính tổng tiền đã được RELEASED cho expert này
-        // (trong thực tế sẽ có thêm logic kiểm tra số dư)
         BigDecimal amount = request.getAmount();
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Số tiền rút phải lớn hơn 0");
+        }
+
+        // Số dư khả dụng = Tổng tiền đã RELEASED cho Expert - Tổng tiền đã yêu cầu/đã duyệt rút trước đó
+        BigDecimal totalReleased = paymentRepository.getTotalReleasedForExpert(expertId);
+        BigDecimal alreadyRequested = withdrawalRepository.getTotalRequestedOrApprovedForExpert(expertId);
+        BigDecimal availableBalance = totalReleased.subtract(alreadyRequested);
+
+        if (amount.compareTo(availableBalance) > 0) {
+            throw new BadRequestException("Số tiền rút vượt quá số dư khả dụng: " + availableBalance);
         }
 
         Withdrawal withdrawal = Withdrawal.builder()
@@ -42,7 +52,12 @@ public class EscrowService {
                 .amount(amount)
                 .status(WithdrawalStatus.PENDING)
                 .build();
-        return withdrawalRepository.save(withdrawal);
+        Withdrawal saved = withdrawalRepository.save(withdrawal);
+
+        analyticsService.recordEvent(AnalyticsEventType.WITHDRAWAL_REQUESTED, expertId,
+                "EXPERT", "Withdrawal", saved.getId().toString());
+
+        return saved;
     }
 
     // Admin duyệt withdrawal
@@ -66,7 +81,12 @@ public class EscrowService {
             .build();
     transactionRepository.save(transaction);
 
-        return withdrawalRepository.save(withdrawal);
+        Withdrawal saved = withdrawalRepository.save(withdrawal);
+
+        analyticsService.recordEvent(AnalyticsEventType.WITHDRAWAL_APPROVED, withdrawal.getExpert().getId(),
+                "EXPERT", "Withdrawal", saved.getId().toString());
+
+        return saved;
     }
 
     // Lấy danh sách tất cả transaction (cho Admin)

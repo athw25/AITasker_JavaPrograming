@@ -1,5 +1,7 @@
 package com.aitasker.recommendation.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.exception.ForbiddenException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.common.enums.Role;
@@ -45,6 +47,7 @@ public class RecommendationService {
     private final ProjectRepository projectRepository;
     private final PortfolioRepository portfolioRepository;
     private final ProposalRepository proposalRepository;
+    private final AnalyticsService analyticsService;
 
     // 1. CẬP NHẬT FEEDBACK KHI CLIENT THUÊ EXPERT
     @Transactional
@@ -113,6 +116,11 @@ public class RecommendationService {
 
         recommendationRepository.saveAll(recommendations);
         log.info("Đã lưu {} gợi ý chuyên gia cho Job ID: {}", recommendations.size(), jobId);
+
+        for (Recommendation rec : recommendations) {
+            analyticsService.recordEvent(AnalyticsEventType.EXPERT_RECOMMENDED, rec.getExpert().getId(),
+                    "EXPERT", "Job", jobId.toString());
+        }
 
         return recommendations.stream()
                 .sorted(Comparator.comparing(Recommendation::getMatchScore).reversed())
@@ -226,19 +234,35 @@ public class RecommendationService {
     // --- BATCH FETCH HELPERS ---
 
     private Map<Long, Double> fetchBatchAverageRatings() {
-        return Collections.emptyMap();
+        return reviewRepository.getAverageRatingsForExperts().stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> row[1] != null ? ((Number) row[1]).doubleValue() : 0.0
+                ));
     }
 
     private Map<Long, Long> fetchBatchTotalProjects() {
-        return Collections.emptyMap();
+        return projectRepository.countTotalProjectsGroupByExpert().stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> row[1] != null ? ((Number) row[1]).longValue() : 0L
+                ));
     }
 
     private Map<Long, Long> fetchBatchCompletedProjects() {
-        return Collections.emptyMap();
+        return projectRepository.countCompletedProjectsGroupByExpert().stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> row[1] != null ? ((Number) row[1]).longValue() : 0L
+                ));
     }
 
     private Map<Long, Long> fetchBatchPortfolioCounts() {
-        return Collections.emptyMap();
+        return portfolioRepository.getPortfolioCountsForExperts().stream()
+                .collect(Collectors.toMap(
+                        row -> ((Number) row[0]).longValue(),
+                        row -> row[1] != null ? ((Number) row[1]).longValue() : 0L
+                ));
     }
 
     private void checkJobOwnership(JobPost job) {

@@ -68,14 +68,17 @@ public class PaymentController {
 
     /**
      * Xem lịch sử giao dịch theo paymentId.
-     * Không cần clientId — ai có quyền đều xem được.
+     * Chỉ Client/Expert thuộc Project của Payment hoặc ADMIN mới được xem.
      */
     @GetMapping("/transactions/{paymentId}")
     @Operation(summary = "Xem lịch sử giao dịch theo Payment")
     public ResponseEntity<ApiResponse<List<Transaction>>> getTransactions(
-            @PathVariable Long paymentId
+            @PathVariable Long paymentId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
-        List<Transaction> transactions = paymentService.getTransactionHistory(paymentId);
+        Long requesterId = userDetails.getUser().getId();
+        boolean isAdmin = userDetails.getUser().getRole().name().equals("ADMIN");
+        List<Transaction> transactions = paymentService.getTransactionHistory(paymentId, requesterId, isAdmin);
         return ResponseEntity.ok(ApiResponse.success(transactions));
     }
 }

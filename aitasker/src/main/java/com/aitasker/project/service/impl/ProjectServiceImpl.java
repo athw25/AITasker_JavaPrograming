@@ -1,5 +1,7 @@
 package com.aitasker.project.service.impl;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.ProjectStatus;
 import com.aitasker.common.enums.ProposalStatus;
 import com.aitasker.common.enums.Role;
@@ -35,6 +37,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final ProposalRepository proposalRepository;
     private final ProjectMapper projectMapper;
+    private final AnalyticsService analyticsService;
 
     /**
      * Tạo Project thủ công.
@@ -188,7 +191,10 @@ public class ProjectServiceImpl implements ProjectService {
                         )
                         .build();
 
-        return projectRepository.save(project);
+        Project saved = projectRepository.save(project);
+        analyticsService.recordEvent(AnalyticsEventType.PROJECT_STARTED, saved.getClient().getId(),
+                Role.CLIENT.name(), "Project", saved.getId().toString());
+        return saved;
     }
 
     @Override

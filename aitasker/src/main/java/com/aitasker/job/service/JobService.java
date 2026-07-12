@@ -1,5 +1,7 @@
 package com.aitasker.job.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.JobStatus;
 import com.aitasker.common.enums.Role;
 import com.aitasker.exception.ForbiddenException;
@@ -24,6 +26,7 @@ import java.util.List;
 public class JobService{
     private final JobPostRepository jobPostRepository;
     private final UserRepository userRepository;
+    private final AnalyticsService analyticsService;
 
     public JobPostResponse create(JobPostRequest request){
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -34,7 +37,10 @@ public class JobService{
         job.setDescription(request.getDescription());
         job.setBudget(request.getBudget());
         job.setClient(client);
-        return toResponse(jobPostRepository.save(job));
+        JobPost saved = jobPostRepository.save(job);
+        analyticsService.recordEvent(AnalyticsEventType.JOB_CREATED, client.getId(),
+                client.getRole().name(), "JobPost", saved.getId().toString());
+        return toResponse(saved);
     }
     public List<JobPostResponse> getAll(){
         return jobPostRepository.findAll().stream().map(this::toResponse).toList();

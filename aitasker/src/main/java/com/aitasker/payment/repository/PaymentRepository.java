@@ -28,4 +28,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             WHERE p.status = com.aitasker.payment.enums.PaymentStatus.RELEASED
             """)
     BigDecimal getTotalRevenue();
+
+    @Query("""
+            SELECT COALESCE(SUM(p.amount),0)
+            FROM Payment p
+            WHERE p.status = com.aitasker.payment.enums.PaymentStatus.RELEASED
+            AND p.project.expert.id = :expertId
+            """)
+    BigDecimal getTotalReleasedForExpert(Long expertId);
 }

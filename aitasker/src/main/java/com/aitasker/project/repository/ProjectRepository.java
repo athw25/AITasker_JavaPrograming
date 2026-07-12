@@ -6,6 +6,7 @@ import com.aitasker.user.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -107,6 +108,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
      */
     long countByClient_Id(Long clientId);
 
+    // Thêm vào ProjectRepository.java
+    long countByStatus(ProjectStatus status);
+
     /**
      * Tìm Project giữa Client và Expert.
      */
@@ -114,4 +118,16 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             User client,
             User expert
     );
+
+    /**
+     * Tổng số Project theo từng Expert (dùng cho Recommendation Engine).
+     */
+    @Query("SELECT p.expert.id, COUNT(p) FROM Project p GROUP BY p.expert.id")
+    List<Object[]> countTotalProjectsGroupByExpert();
+
+    /**
+     * Số Project COMPLETED theo từng Expert (dùng cho Recommendation Engine).
+     */
+    @Query("SELECT p.expert.id, COUNT(p) FROM Project p WHERE p.status = com.aitasker.common.enums.ProjectStatus.COMPLETED GROUP BY p.expert.id")
+    List<Object[]> countCompletedProjectsGroupByExpert();
 }

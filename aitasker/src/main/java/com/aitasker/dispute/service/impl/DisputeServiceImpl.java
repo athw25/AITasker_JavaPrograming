@@ -11,6 +11,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.DisputeStatus;
 import com.aitasker.common.response.PageResponse;
 import com.aitasker.dispute.dto.request.AddEvidenceRequest;
@@ -25,7 +27,10 @@ import com.aitasker.exception.BadRequestException;
 import com.aitasker.exception.BusinessException;
 import com.aitasker.exception.ForbiddenException;
 import com.aitasker.exception.ResourceNotFoundException;
+import com.aitasker.notification.service.NotificationService;
 import com.aitasker.payment.service.PaymentService;
+import com.aitasker.security.audit.enums.AuditAction;
+import com.aitasker.security.audit.service.AuditLogService;
 import com.aitasker.project.entity.Project;
 import com.aitasker.project.repository.ProjectRepository;
 import com.aitasker.user.entity.User;
@@ -39,7 +44,9 @@ public class DisputeServiceImpl implements DisputeService {
     private final DisputeRepository disputeRepository;
     private final ProjectRepository projectRepository;
     private final PaymentService paymentService;
-// import: import com.aitasker.payment.service.PaymentService;
+    private final AnalyticsService analyticsService;
+    private final NotificationService notificationService;
+    private final AuditLogService auditLogService;
 
     private static final List<DisputeStatus> OPEN_STATES =
             List.of(DisputeStatus.OPEN, DisputeStatus.IN_REVIEW);
@@ -71,6 +78,22 @@ public class DisputeServiceImpl implements DisputeService {
                 .build();
 
         Dispute saved = disputeRepository.save(dispute);
+        analyticsService.recordEvent(AnalyticsEventType.DISPUTE_CREATED, currentUser.getId(),
+                currentUser.getRole().name(), "Dispute", saved.getId().toString());
+        auditLogService.log(AuditAction.DISPUTE_CREATED, currentUser.getId(), currentUser.getEmail(),
+                "Dispute", saved.getId().toString(), "Lý do: " + request.getReason());
+
+        User counterpart = project.getClient().getId().equals(currentUser.getId())
+                ? project.getExpert()
+                : project.getClient();
+        notificationService.createNotification(
+                counterpart.getId(),
+                "Có tranh chấp mới trên Project của bạn",
+                currentUser.getName() + " đã mở một Dispute cho Project #" + project.getId()
+                        + ". Lý do: " + request.getReason(),
+                "DISPUTE_CREATED"
+        );
+
         return toResponse(saved);
     }
 
@@ -149,7 +172,12 @@ public class DisputeServiceImpl implements DisputeService {
         dispute.setResolution(request.getResolution());
         dispute.setResolvedAt(LocalDateTime.now());
 
-        return toResponse(disputeRepository.save(dispute));
+        Dispute resolved = disputeRepository.save(dispute);
+        analyticsService.recordEvent(AnalyticsEventType.DISPUTE_RESOLVED, currentUser.getId(),
+                currentUser.getRole().name(), "Dispute", resolved.getId().toString());
+        auditLogService.log(AuditAction.DISPUTE_RESOLVED, currentUser.getId(), currentUser.getEmail(),
+                "Dispute", resolved.getId().toString(), "Kết luận: " + request.getResolution());
+        return toResponse(resolved);
     }
 
     @Override

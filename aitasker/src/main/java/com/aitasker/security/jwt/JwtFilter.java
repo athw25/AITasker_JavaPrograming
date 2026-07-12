@@ -70,6 +70,16 @@ public class JwtFilter extends OncePerRequestFilter {
 
                 if (jwtService.isTokenValid(token, userDetails)) {
 
+                    if (!userDetails.isEnabled() || !userDetails.isAccountNonLocked()) {
+                        // Token hợp lệ (chưa hết hạn) nhưng tài khoản đã bị Admin ban
+                        // hoặc đang bị khóa do đăng nhập sai quá số lần — chặn ngay
+                        // tại đây thay vì tin tưởng mù quáng vào chữ ký JWT.
+                        log.debug("Tài khoản '{}' đã bị vô hiệu hóa/khóa, từ chối request tới {}",
+                                username, request.getRequestURI());
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,

@@ -3,9 +3,10 @@ package com.aitasker.admin.controller;
 import com.aitasker.admin.dto.UserSummaryResponse;
 import com.aitasker.admin.service.AdminUserService;
 import com.aitasker.common.response.ApiResponse;
-import com.aitasker.user.entity.User;
+import com.aitasker.security.userdetails.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,15 +26,15 @@ public class AdminUserController {
     }
     @PutMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<String> banUser(@PathVariable Long id) {
-        adminUserService.banUser(id);
+    public ApiResponse<String> banUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails admin) {
+        adminUserService.banUser(id, admin.getUser().getId());
         return ApiResponse.success("BanUser successfully");
     }
 
     @PutMapping("/{id}/unban")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<String> unbanUser(@PathVariable Long id) {
-        adminUserService.unbanUser(id);
+    public ApiResponse<String> unbanUser(@PathVariable Long id, @AuthenticationPrincipal CustomUserDetails admin) {
+        adminUserService.unbanUser(id, admin.getUser().getId());
         return ApiResponse.success("UnbanUser successfully");
     }
 }

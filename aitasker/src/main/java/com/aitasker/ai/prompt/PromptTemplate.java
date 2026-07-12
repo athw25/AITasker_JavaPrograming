@@ -11,8 +11,7 @@ public enum PromptTemplate {
               "title": "...",
               "description": "...",
               "skills": ["skill1", "skill2", "skill3"],
-              "estimatedBudget": 0,
-              "currency": "USD"
+              "budgetSuggestion": "..."
             }
             """),
 
@@ -22,11 +21,9 @@ public enum PromptTemplate {
             Analyze the input and generate a professional service description.
             Respond ONLY in valid JSON with this exact structure, no markdown, no explanation:
             {
-              "title": "...",
-              "description": "...",
+              "serviceDescription": "...",
               "tags": ["tag1", "tag2", "tag3"],
-              "suggestedPrice": 0,
-              "deliveryDays": 7
+              "pricingSuggestion": "..."
             }
             """),
 

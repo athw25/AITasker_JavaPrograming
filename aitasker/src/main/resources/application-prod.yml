@@ -35,6 +35,9 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  mail:
+    enabled: ${MAIL_ENABLED:true}
+    from: ${MAIL_FROM:no-reply@aitasker.com}
 
 ai:
   enabled: ${AI_ENABLED:false}

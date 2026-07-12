@@ -15,30 +15,26 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AdminStatisticsService {
+
     private final UserRepository userRepository;
     private final JobPostRepository jobPostRepository;
     private final ProjectRepository projectRepository;
     private final ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
-    public DashboardStatistics getDashboardStatistics(){
+    public DashboardStatistics getDashboardStatistics() {
         return DashboardStatistics.builder()
-                // User stats
                 .totalUsers(userRepository.count())
                 .totalClients(userRepository.countByRole(Role.CLIENT))
                 .totalExperts(userRepository.countByRole(Role.EXPERT))
-                //Job stats
                 .totalJobs(jobPostRepository.count())
                 .openJobs(jobPostRepository.countByStatus(JobStatus.OPEN))
                 .completedJobs(jobPostRepository.countByStatus(JobStatus.CLOSED))
-                //Project stats
                 .totalProjects(projectRepository.count())
                 .completedProjects(projectRepository.findAll().stream()
                         .filter(project -> project.getStatus() == ProjectStatus.COMPLETED)
                         .count())
-                //Review stats
                 .totalReviews(reviewRepository.count())
                 .build();
-
     }
 }

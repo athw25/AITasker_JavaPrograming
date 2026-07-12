@@ -6,6 +6,6 @@ import org.springframework.core.io.Resource;
 
 public interface FileStorageService {
     Attachment uploadFile(MultipartFile file, Long currentUserId);
-    Resource downloadFile(Long fileId);
+    Resource downloadFile(Long fileId, Long currentUserId, boolean isAdmin);
     void deleteFile(Long fileId, Long currentUserId);
 }
