@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.aitasker.common.response.ApiResponse;
 import com.aitasker.common.response.PageResponse;
+import com.aitasker.dispute.dto.request.AddDisputeMessageRequest;
 import com.aitasker.dispute.dto.request.AddEvidenceRequest;
 import com.aitasker.dispute.dto.request.CreateDisputeRequest;
 import com.aitasker.dispute.dto.request.DisputeResolveRequest;
@@ -39,7 +40,7 @@ public class DisputeController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('CLIENT', 'AI_EXPERT')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'EXPERT')")
     @Operation(summary = "Create a dispute for a project")
     public ApiResponse<DisputeResponse> create(
             @Valid @RequestBody CreateDisputeRequest request,
@@ -50,7 +51,7 @@ public class DisputeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('CLIENT', 'AI_EXPERT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'EXPERT', 'ADMIN')")
     @Operation(summary = "List disputes (optionally filter by status)")
     public ApiResponse<PageResponse<DisputeResponse>> getAll(
             @RequestParam(required = false) String status,
@@ -63,7 +64,7 @@ public class DisputeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CLIENT', 'AI_EXPERT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'EXPERT', 'ADMIN')")
     @Operation(summary = "Get dispute detail by id")
     public ApiResponse<DisputeResponse> getById(
             @PathVariable Long id,
@@ -86,7 +87,7 @@ public class DisputeController {
     }
 
     @PostMapping("/{id}/evidence")
-    @PreAuthorize("hasAnyRole('CLIENT', 'AI_EXPERT')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'EXPERT')")
     @Operation(summary = "Add evidence to an open dispute")
     public ApiResponse<DisputeResponse> addEvidence(
             @PathVariable Long id,
@@ -95,5 +96,17 @@ public class DisputeController {
         return ApiResponse.success(
                 "Evidence added successfully",
                 disputeService.addEvidence(id, request, principal.getUser()));
+    }
+
+    @PostMapping("/{id}/messages")
+    @PreAuthorize("hasAnyRole('CLIENT', 'EXPERT', 'ADMIN')")
+    @Operation(summary = "Send a message on a dispute")
+    public ApiResponse<DisputeResponse> addMessage(
+            @PathVariable Long id,
+            @Valid @RequestBody AddDisputeMessageRequest request,
+            @AuthenticationPrincipal CustomUserDetails principal) {
+        return ApiResponse.success(
+                "Message sent successfully",
+                disputeService.addMessage(id, request, principal.getUser()));
     }
 }

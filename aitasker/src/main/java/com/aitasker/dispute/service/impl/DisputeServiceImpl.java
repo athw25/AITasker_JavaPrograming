@@ -11,14 +11,18 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.DisputeStatus;
 import com.aitasker.common.response.PageResponse;
+import com.aitasker.dispute.dto.request.AddDisputeMessageRequest;
 import com.aitasker.dispute.dto.request.AddEvidenceRequest;
 import com.aitasker.dispute.dto.request.CreateDisputeRequest;
 import com.aitasker.dispute.dto.request.DisputeResolveRequest;
 import com.aitasker.dispute.dto.response.DisputeResponse;
 import com.aitasker.dispute.entity.Dispute;
 import com.aitasker.dispute.entity.DisputeEvidence;
+import com.aitasker.dispute.entity.DisputeMessage;
 import com.aitasker.dispute.repository.DisputeRepository;
 import com.aitasker.dispute.service.DisputeService;
 import com.aitasker.exception.BadRequestException;
@@ -39,6 +43,7 @@ public class DisputeServiceImpl implements DisputeService {
     private final DisputeRepository disputeRepository;
     private final ProjectRepository projectRepository;
     private final PaymentService paymentService;
+    private final AnalyticsService analyticsService;
 // import: import com.aitasker.payment.service.PaymentService;
 
     private static final List<DisputeStatus> OPEN_STATES =
@@ -71,6 +76,8 @@ public class DisputeServiceImpl implements DisputeService {
                 .build();
 
         Dispute saved = disputeRepository.save(dispute);
+        analyticsService.recordEvent(AnalyticsEventType.DISPUTE_CREATED, currentUser.getId(),
+                currentUser.getRole().name(), "DISPUTE", String.valueOf(saved.getId()));
         return toResponse(saved);
     }
 
@@ -148,6 +155,29 @@ public class DisputeServiceImpl implements DisputeService {
         dispute.setStatus(request.getStatus());
         dispute.setResolution(request.getResolution());
         dispute.setResolvedAt(LocalDateTime.now());
+
+        Dispute resolved = disputeRepository.save(dispute);
+        analyticsService.recordEvent(AnalyticsEventType.DISPUTE_RESOLVED, currentUser.getId(),
+                "ADMIN", "DISPUTE", String.valueOf(id));
+        return toResponse(resolved);
+    }
+
+    @Override
+    @Transactional
+    public DisputeResponse addMessage(Long id, AddDisputeMessageRequest request, User currentUser) {
+        Dispute dispute = getDisputeOrThrow(id);
+        checkViewPermission(dispute, currentUser);
+
+        if (!OPEN_STATES.contains(dispute.getStatus())) {
+            throw new BusinessException("Chỉ được nhắn tin khi Dispute đang được xử lý");
+        }
+
+        DisputeMessage message = DisputeMessage.builder()
+                .sender(currentUser)
+                .message(request.getMessage())
+                .build();
+
+        dispute.addMessage(message);
 
         return toResponse(disputeRepository.save(dispute));
     }

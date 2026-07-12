@@ -2,13 +2,12 @@ package com.aitasker.admin.controller;
 
 import com.aitasker.admin.dto.UserSummaryResponse;
 import com.aitasker.admin.service.AdminUserService;
+import com.aitasker.common.enums.Role;
 import com.aitasker.common.response.ApiResponse;
-import com.aitasker.user.entity.User;
+import com.aitasker.common.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -19,9 +18,13 @@ public class AdminUserController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<UserSummaryResponse>> getAllUsers() {
+    public ApiResponse<PageResponse<UserSummaryResponse>> getAllUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Role role,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.success(
-                adminUserService.getAllUsers());
+                adminUserService.getAllUsers(keyword, role, page, size));
     }
     @PutMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN')")

@@ -1,17 +1,21 @@
 package com.aitasker.notification.service;
 
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-import java.lang.reflect.Method;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
-    private final ApplicationContext context;
+    // JavaMailSender chỉ được cấu hình khi có SPRING_MAIL_HOST; dùng ObjectProvider
+    // để môi trường dev/test không cấu hình SMTP vẫn khởi động được bình thường.
+    private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
     @Override
     public void sendProposalNotification(String recipientEmail, String proposalTitle, String status) {
@@ -55,47 +59,23 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendEmail(String to, String subject, String content) {
-        Object mailSender = null;
-        try {
-            // Dynamic lookup of JavaMailSender bean if it exists in ApplicationContext
-            mailSender = context.getBean("mailSender");
-        } catch (Exception e) {
-            // Ignored - mailSender bean not present in context
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+
+        if (mailSender == null) {
+            logConsoleEmail(to, subject, content);
+            return;
         }
 
-        if (mailSender != null) {
-            try {
-                // Dynamically invoke JavaMailSender to send emails
-                Method createMimeMessageMethod = mailSender.getClass().getMethod("createMimeMessage");
-                Object mimeMessage = createMimeMessageMethod.invoke(mailSender);
-
-                // Get MimeMessageHelper class dynamically
-                Class<?> helperClass = Class.forName("org.springframework.mail.javamail.MimeMessageHelper");
-                // Find helper constructor: Helper(MimeMessage, boolean multipart, String encoding)
-                Class<?> mimeMessageInterface = Class.forName("jakarta.mail.internet.MimeMessage");
-                Object helper = helperClass.getConstructor(mimeMessageInterface, boolean.class, String.class)
-                        .newInstance(mimeMessage, true, "UTF-8");
-
-                // Invoke setTo, setSubject, setText dynamically
-                Method setToMethod = helperClass.getMethod("setTo", String.class);
-                setToMethod.invoke(helper, to);
-
-                Method setSubjectMethod = helperClass.getMethod("setSubject", String.class);
-                setSubjectMethod.invoke(helper, subject);
-
-                Method setTextMethod = helperClass.getMethod("setText", String.class, boolean.class);
-                setTextMethod.invoke(helper, content, false);
-
-                // Invoke mailSender.send(mimeMessage)
-                Method sendMethod = mailSender.getClass().getMethod("send", mimeMessageInterface);
-                sendMethod.invoke(mailSender, mimeMessage);
-
-                log.info("Real email sent successfully via reflection to {}", to);
-            } catch (Exception e) {
-                log.error("Failed to send real email via reflection helper to {}: {}", to, e.getMessage());
-                logConsoleEmail(to, subject, content);
-            }
-        } else {
+        try {
+            MimeMessage mimeMessage = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(content, false);
+            mailSender.send(mimeMessage);
+            log.info("Đã gửi email thành công tới {}", to);
+        } catch (Exception e) {
+            log.error("Gửi email thất bại tới {}: {}", to, e.getMessage());
             logConsoleEmail(to, subject, content);
         }
     }
@@ -103,7 +83,7 @@ public class EmailServiceImpl implements EmailService {
     private void logConsoleEmail(String to, String subject, String content) {
         log.info("\n" +
                         "============================================================\n" +
-                        "✉️  MOCK EMAIL SENT SUCCESSFULLY (No JavaMailSender configured)\n" +
+                        "✉️  MOCK EMAIL (Chưa cấu hình SMTP - SPRING_MAIL_HOST)\n" +
                         "------------------------------------------------------------\n" +
                         "TO     : {}\n" +
                         "SUBJECT: {}\n" +

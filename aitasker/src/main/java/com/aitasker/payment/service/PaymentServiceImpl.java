@@ -1,5 +1,7 @@
 package com.aitasker.payment.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final TransactionRepository transactionRepository;
     private final ProjectRepository projectRepository;
     private final MilestoneRepository milestoneRepository;
+    private final AnalyticsService analyticsService;
 
     @Override
     public Payment deposit(DepositRequest request, Long clientId) {
@@ -63,6 +66,9 @@ public class PaymentServiceImpl implements PaymentService {
                 .description("Deposit vào Escrow cho Project #" + project.getId())
                 .build();
         transactionRepository.save(transaction);
+
+        analyticsService.recordEvent(AnalyticsEventType.PAYMENT_DEPOSITED, clientId, "CLIENT",
+                "PROJECT", String.valueOf(project.getId()));
 
         return payment;
     }
@@ -99,6 +105,9 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
         transactionRepository.save(transaction);
 
+        analyticsService.recordEvent(AnalyticsEventType.PAYMENT_RELEASED, clientId, "CLIENT",
+                "PAYMENT", String.valueOf(payment.getId()));
+
         return payment;
     }
     @Override
@@ -124,6 +133,8 @@ public class PaymentServiceImpl implements PaymentService {
                 .description(reason)
                 .build();
     transactionRepository.save(transaction);
+    analyticsService.recordEvent(AnalyticsEventType.PAYMENT_REFUNDED, null, null,
+            "PAYMENT", String.valueOf(payment.getId()));
     return payment;
     }
 

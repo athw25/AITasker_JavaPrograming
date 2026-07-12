@@ -31,6 +31,10 @@ public class Attachment {
     @Column(nullable = false)
     private Long uploadedBy; // ID của User/Expert thực hiện upload
 
+    // Project mà file này thuộc về (Delivery, Milestone, Project Attachment...).
+    // Null nếu là file không gắn với Project cụ thể (ví dụ: Portfolio).
+    private Long relatedProjectId;
+
     private LocalDateTime createdAt;
 
     @PrePersist

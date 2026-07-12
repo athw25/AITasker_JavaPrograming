@@ -2,13 +2,11 @@ package com.aitasker.admin.controller;
 
 import com.aitasker.admin.service.AdminJobService;
 import com.aitasker.common.response.ApiResponse;
+import com.aitasker.common.response.PageResponse;
 import com.aitasker.job.dto.JobPostResponse;
-import com.aitasker.job.entity.JobPost;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/jobs")
@@ -19,8 +17,10 @@ public class AdminJobController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<List<JobPostResponse>> getAllJobs(){
-        return ApiResponse.success(adminJobService.getAllJobs());
+    public ApiResponse<PageResponse<JobPostResponse>> getAllJobs(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        return ApiResponse.success(adminJobService.getAllJobs(page, size));
     }
 
     @DeleteMapping("/{id}")

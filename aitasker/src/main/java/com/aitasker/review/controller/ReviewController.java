@@ -5,6 +5,7 @@ import com.aitasker.review.dto.ReviewResponse;
 import com.aitasker.review.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +21,7 @@ public class ReviewController {
 
     @PostMapping
     @Operation(summary = "Create a review")
-    public ResponseEntity<ReviewResponse> create(@RequestBody ReviewRequest request){
+    public ResponseEntity<ReviewResponse> create(@Valid @RequestBody ReviewRequest request){
         return ResponseEntity.ok(reviewService.create(request));
     }
 

@@ -1,11 +1,13 @@
 package com.aitasker.job.controller;
 
+import com.aitasker.common.response.PageResponse;
 import com.aitasker.job.dto.JobPostRequest;
 import com.aitasker.job.dto.JobPostResponse;
 import com.aitasker.job.dto.JobSearchRequest;
 import com.aitasker.job.service.JobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,14 +25,16 @@ public class JobController {
     @PostMapping
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "Create a new job post")
-    public ResponseEntity<JobPostResponse> create (@RequestBody JobPostRequest request){
+    public ResponseEntity<JobPostResponse> create (@Valid @RequestBody JobPostRequest request){
         return ResponseEntity.ok(jobService.create(request));
     }
 
     @GetMapping
-    @Operation(summary = "Get all ob posts")
-    public ResponseEntity<List<JobPostResponse>> getAll(){
-        return ResponseEntity.ok(jobService.getAll());
+    @Operation(summary = "Get all job posts (paginated)")
+    public ResponseEntity<PageResponse<JobPostResponse>> getAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size){
+        return ResponseEntity.ok(jobService.getAll(page, size));
     }
 
     @GetMapping("/me")
@@ -48,7 +52,7 @@ public class JobController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "update a job post")
-    public ResponseEntity<JobPostResponse> update(@PathVariable Long id,@RequestBody JobPostRequest request){
+    public ResponseEntity<JobPostResponse> update(@PathVariable Long id, @Valid @RequestBody JobPostRequest request){
         return ResponseEntity.ok(jobService.update(id, request));
     }
 

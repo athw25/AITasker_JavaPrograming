@@ -1,5 +1,7 @@
 package com.aitasker.recommendation.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.exception.ForbiddenException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.common.enums.Role;
@@ -50,6 +52,7 @@ public class RecommendationService {
     private final PortfolioRepository portfolioRepository;
     private final ProposalRepository proposalRepository;
     private final RecommendationFeedbackRepository recommendationFeedbackRepository;
+    private final AnalyticsService analyticsService;
 
 
     // 1. CẬP NHẬT FEEDBACK KHI CLIENT THUÊ EXPERT
@@ -119,6 +122,8 @@ public class RecommendationService {
 
         recommendationRepository.saveAll(recommendations);
         log.info("Đã lưu {} gợi ý chuyên gia cho Job ID: {}", recommendations.size(), jobId);
+        analyticsService.recordEvent(AnalyticsEventType.EXPERT_RECOMMENDED, job.getClient().getId(), "CLIENT",
+                "JOB", String.valueOf(jobId));
 
         return recommendations.stream()
                 .sorted(Comparator.comparing(Recommendation::getMatchScore).reversed())

@@ -30,15 +30,16 @@ public class FileStorageController {
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('EXPERT')")
+    @PreAuthorize("hasAnyRole('CLIENT','EXPERT')")
     @Operation(summary = "Tải tập tin mới lên hệ thống (Portfolio, Delivery, Project Attachments)")
-    public ApiResponse<Attachment> uploadFile(@RequestParam("file") MultipartFile file) {
+    public ApiResponse<Attachment> uploadFile(@RequestParam("file") MultipartFile file,
+                                               @RequestParam(value = "projectId", required = false) Long projectId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof CustomUserDetails userDetails)) {
             throw new AccessDeniedException("Yêu cầu đăng nhập để upload tệp tin!");
         }
         Long currentUserId = userDetails.getUser().getId();
-        Attachment attachment = fileStorageService.uploadFile(file, currentUserId);
+        Attachment attachment = fileStorageService.uploadFile(file, currentUserId, projectId);
         return ApiResponse.success("Tải tập tin lên hệ thống thành công!", attachment);
     }
 

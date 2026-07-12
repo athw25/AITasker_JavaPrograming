@@ -1,7 +1,10 @@
 package com.aitasker.job.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.JobStatus;
 import com.aitasker.common.enums.Role;
+import com.aitasker.common.response.PageResponse;
 import com.aitasker.exception.ForbiddenException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.job.dto.JobPostRequest;
@@ -12,6 +15,8 @@ import com.aitasker.job.repository.JobPostRepository;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +29,7 @@ import java.util.List;
 public class JobService{
     private final JobPostRepository jobPostRepository;
     private final UserRepository userRepository;
+    private final AnalyticsService analyticsService;
 
     public JobPostResponse create(JobPostRequest request){
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -33,11 +39,27 @@ public class JobService{
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
         job.setBudget(request.getBudget());
+        job.setDeadline(request.getDeadline());
+        job.setRequiredSkills(request.getRequiredSkills());
         job.setClient(client);
-        return toResponse(jobPostRepository.save(job));
+        JobPost saved = jobPostRepository.save(job);
+        analyticsService.recordEvent(AnalyticsEventType.JOB_CREATED, client.getId(), Role.CLIENT.name(),
+                "JOB", String.valueOf(saved.getId()));
+        return toResponse(saved);
     }
-    public List<JobPostResponse> getAll(){
-        return jobPostRepository.findAll().stream().map(this::toResponse).toList();
+
+    public PageResponse<JobPostResponse> getAll(int page, int size){
+        Page<JobPost> jobPage = jobPostRepository.findAll(PageRequest.of(page, size));
+        List<JobPostResponse> content = jobPage.getContent().stream().map(this::toResponse).toList();
+        return new PageResponse<>(
+                content,
+                jobPage.getNumber(),
+                jobPage.getSize(),
+                jobPage.getTotalElements(),
+                jobPage.getTotalPages(),
+                jobPage.isFirst(),
+                jobPage.isLast()
+        );
     }
 
     public List<JobPostResponse> getMyJobs() {

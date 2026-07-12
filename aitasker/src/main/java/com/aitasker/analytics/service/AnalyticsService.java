@@ -52,10 +52,8 @@ public class AnalyticsService {
 
     public DashboardSummaryResponse getDashboard() {
         long totalUsers  = userRepository.count();
-        long totalClients = userRepository.findAll().stream()
-                .filter(u -> Role.CLIENT.equals(u.getRole())).count();
-        long totalExperts = userRepository.findAll().stream()
-                .filter(u -> Role.EXPERT.equals(u.getRole())).count();
+        long totalClients = userRepository.countByRole(Role.CLIENT);
+        long totalExperts = userRepository.countByRole(Role.EXPERT);
         long totalJobs   = jobPostRepository.count();
         long totalProposals = proposalRepository.count();
         long totalProjects  = projectRepository.count();
@@ -84,20 +82,9 @@ public class AnalyticsService {
         long recommendationsGenerated = analyticsEventRepository
                 .countByEventType(AnalyticsEventType.EXPERT_RECOMMENDED);
 
-        BigDecimal totalRevenue = paymentRepository.findAll().stream()
-                .filter(p -> p.getStatus() != null
-                        && p.getStatus().name().equals("RELEASED"))
-                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+        BigDecimal totalRevenue = paymentRepository.getTotalRevenue();
         LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
-        BigDecimal revenueThisMonth = paymentRepository.findAll().stream()
-                .filter(p -> p.getStatus() != null
-                        && p.getStatus().name().equals("RELEASED")
-                        && p.getCreatedAt() != null
-                        && p.getCreatedAt().isAfter(monthStart))
-                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal revenueThisMonth = paymentRepository.getRevenueSince(monthStart);
 
         return DashboardSummaryResponse.builder()
                 .totalUsers(totalUsers)
@@ -259,14 +246,7 @@ public class AnalyticsService {
             YearMonth ym = YearMonth.now().minusMonths(i);
             LocalDateTime from = ym.atDay(1).atStartOfDay();
             LocalDateTime to   = ym.atEndOfMonth().atTime(23, 59, 59);
-            BigDecimal amount = paymentRepository.findAll().stream()
-                    .filter(p -> p.getStatus() != null
-                            && p.getStatus().name().equals("RELEASED")
-                            && p.getCreatedAt() != null
-                            && !p.getCreatedAt().isBefore(from)
-                            && !p.getCreatedAt().isAfter(to))
-                    .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal amount = paymentRepository.getRevenueBetween(from, to);
             result.add(MonthlyDataPoint.builder()
                     .month(ym.format(MONTH_FORMATTER))
                     .count(0)

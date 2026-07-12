@@ -1,5 +1,7 @@
 package com.aitasker.payment.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.exception.BadRequestException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.payment.dto.WithdrawalRequest;
@@ -24,17 +26,22 @@ public class EscrowService {
     private final TransactionRepository transactionRepository;
     private final WithdrawalRepository withdrawalRepository;
     private final UserRepository userRepository;
+    private final AnalyticsService analyticsService;
 
     // Expert tạo yêu cầu rút tiền
     public Withdrawal requestWithdrawal(WithdrawalRequest request, Long expertId) {
         User expert = userRepository.findById(expertId)
                 .orElseThrow(() -> new ResourceNotFoundException("Expert không tìm thấy"));
 
-        // Tính tổng tiền đã được RELEASED cho expert này
-        // (trong thực tế sẽ có thêm logic kiểm tra số dư)
         BigDecimal amount = request.getAmount();
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Số tiền rút phải lớn hơn 0");
+        }
+
+        BigDecimal availableBalance = getAvailableBalance(expertId);
+        if (amount.compareTo(availableBalance) > 0) {
+            throw new BadRequestException(
+                    "Số tiền rút vượt quá số dư khả dụng. Số dư hiện tại: " + availableBalance);
         }
 
         Withdrawal withdrawal = Withdrawal.builder()
@@ -42,7 +49,18 @@ public class EscrowService {
                 .amount(amount)
                 .status(WithdrawalStatus.PENDING)
                 .build();
-        return withdrawalRepository.save(withdrawal);
+        Withdrawal saved = withdrawalRepository.save(withdrawal);
+        analyticsService.recordEvent(AnalyticsEventType.WITHDRAWAL_REQUESTED, expertId, "EXPERT",
+                "WITHDRAWAL", String.valueOf(saved.getId()));
+        return saved;
+    }
+
+    // Số dư khả dụng = Tổng tiền đã RELEASED cho Expert - Tổng tiền đang PENDING/đã APPROVED rút
+    @Transactional(readOnly = true)
+    public BigDecimal getAvailableBalance(Long expertId) {
+        BigDecimal released = paymentRepository.getReleasedAmountForExpert(expertId);
+        BigDecimal reserved = withdrawalRepository.getReservedOrWithdrawnAmount(expertId);
+        return released.subtract(reserved);
     }
 
     // Admin duyệt withdrawal
@@ -52,6 +70,17 @@ public class EscrowService {
 
         if (withdrawal.getStatus() != WithdrawalStatus.PENDING) {
             throw new BadRequestException("Withdrawal không ở trạng thái PENDING");
+        }
+
+        // Đối chiếu lại số dư tại thời điểm duyệt để tránh trường hợp Expert đã bị
+        // trừ số dư bởi các Withdrawal khác được duyệt trước đó.
+        BigDecimal releasedExcludingThis = paymentRepository.getReleasedAmountForExpert(withdrawal.getExpert().getId());
+        BigDecimal reservedExcludingThis = withdrawalRepository
+                .getReservedOrWithdrawnAmount(withdrawal.getExpert().getId())
+                .subtract(withdrawal.getAmount());
+        BigDecimal availableExcludingThis = releasedExcludingThis.subtract(reservedExcludingThis);
+        if (withdrawal.getAmount().compareTo(availableExcludingThis) > 0) {
+            throw new BadRequestException("Số dư của Expert không đủ để duyệt yêu cầu rút tiền này");
         }
 
         withdrawal.setStatus(WithdrawalStatus.APPROVED);
@@ -66,7 +95,10 @@ public class EscrowService {
             .build();
     transactionRepository.save(transaction);
 
-        return withdrawalRepository.save(withdrawal);
+        Withdrawal approved = withdrawalRepository.save(withdrawal);
+        analyticsService.recordEvent(AnalyticsEventType.WITHDRAWAL_APPROVED, withdrawal.getExpert().getId(),
+                "EXPERT", "WITHDRAWAL", String.valueOf(withdrawalId));
+        return approved;
     }
 
     // Lấy danh sách tất cả transaction (cho Admin)

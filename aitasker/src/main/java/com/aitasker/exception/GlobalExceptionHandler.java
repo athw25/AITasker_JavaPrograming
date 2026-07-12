@@ -66,6 +66,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new BaseResponse(false, ex.getMessage()));
     }
 
+    // AI Provider đang tắt hoặc không gọi được (503)
+    @ExceptionHandler(AiUnavailableException.class)
+    public ResponseEntity<BaseResponse> handleAiUnavailable(AiUnavailableException ex){
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(new BaseResponse(false, ex.getMessage()));
+    }
+
     // Lỗi validation DTO (@Valid)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationException(

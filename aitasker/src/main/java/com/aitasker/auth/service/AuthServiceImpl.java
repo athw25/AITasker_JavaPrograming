@@ -1,5 +1,7 @@
 package com.aitasker.auth.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
 import com.aitasker.auth.dto.RegisterRequest;
@@ -34,6 +36,8 @@ public class AuthServiceImpl implements AuthService {
     private final AuditLogService auditLogService;
     private final RefreshTokenRepository refreshTokenRepository;
     private final LoginAttemptService loginAttemptService;
+    private final AnalyticsService analyticsService;
+    private final PasswordResetService passwordResetService;
 
 
 
@@ -74,6 +78,8 @@ public class AuthServiceImpl implements AuthService {
             profile.setFullName(request.getFullName());
             expertProfileRepository.save(profile);
         }
+
+        analyticsService.recordEvent(AnalyticsEventType.USER_REGISTERED, user.getId(), user.getRole().name(), "USER", String.valueOf(user.getId()));
 
         return AuthResponse.builder()
                 .message("Đăng ký thành công! Vui lòng đăng nhập.")
@@ -130,6 +136,7 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = createAndSaveRefreshToken(user, rememberMe);
 
         auditLogService.log("LOGIN_SUCCESS", "Đăng nhập thành công", user.getEmail(), ipAddress);
+        analyticsService.recordEvent(AnalyticsEventType.USER_LOGIN, user.getId(), user.getRole().name(), "USER", String.valueOf(user.getId()));
 
         return AuthResponse.builder()
                 .token(jwtToken)
@@ -163,6 +170,16 @@ public class AuthServiceImpl implements AuthService {
     @org.springframework.transaction.annotation.Transactional
     public void logout(String refreshTokenStr) {
         refreshTokenRepository.deleteByToken(refreshTokenStr);
+    }
+
+    @Override
+    public void forgotPassword(com.aitasker.auth.dto.ForgotPasswordRequest request) {
+        passwordResetService.forgotPassword(request.getEmail());
+    }
+
+    @Override
+    public void resetPassword(com.aitasker.auth.dto.ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
     }
 
     private String createAndSaveRefreshToken(com.aitasker.user.entity.User user, boolean rememberMe) {

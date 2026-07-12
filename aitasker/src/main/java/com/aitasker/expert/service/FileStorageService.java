@@ -5,7 +5,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
 
 public interface FileStorageService {
-    Attachment uploadFile(MultipartFile file, Long currentUserId);
+    Attachment uploadFile(MultipartFile file, Long currentUserId, Long relatedProjectId);
     Resource downloadFile(Long fileId);
     void deleteFile(Long fileId, Long currentUserId);
 }

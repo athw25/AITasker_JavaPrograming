@@ -32,7 +32,7 @@ public class FileStorageServiceImpl implements FileStorageService {
     }
 
     @Override
-    public Attachment uploadFile(MultipartFile file, Long currentUserId) {
+    public Attachment uploadFile(MultipartFile file, Long currentUserId, Long relatedProjectId) {
         fileSecurityService.validateFile(file);
         try {
             if (file.isEmpty()) {
@@ -52,6 +52,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                     .filePath(destinationFile.toString())
                     .fileSize(file.getSize())
                     .uploadedBy(currentUserId)
+                    .relatedProjectId(relatedProjectId)
                     .build();
 
             return attachmentRepository.save(attachment);

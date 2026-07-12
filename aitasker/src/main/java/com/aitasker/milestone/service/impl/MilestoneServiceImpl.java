@@ -1,5 +1,7 @@
 package com.aitasker.milestone.service.impl;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.DeliveryStatus;
 import com.aitasker.common.enums.MilestoneStatus;
 import com.aitasker.common.enums.ProjectStatus;
@@ -38,6 +40,7 @@ public class MilestoneServiceImpl implements MilestoneService {
     private final ProjectRepository projectRepository;
     private final DeliveryRepository deliveryRepository;
     private final DeliveryService deliveryService;
+    private final AnalyticsService analyticsService;
     private final MilestoneMapper milestoneMapper;
 
     @Override
@@ -105,6 +108,8 @@ public class MilestoneServiceImpl implements MilestoneService {
         delivery.setRejectReason(null);
         milestone.setStatus(MilestoneStatus.APPROVED);
         milestone.setApprovedAt(now);
+        analyticsService.recordEvent(AnalyticsEventType.MILESTONE_APPROVED, currentUser.getId(), "CLIENT",
+                "MILESTONE", String.valueOf(milestone.getId()));
         return milestoneMapper.toResponse(milestone);
     }
 
@@ -139,7 +144,11 @@ public class MilestoneServiceImpl implements MilestoneService {
         milestone.setStatus(MilestoneStatus.PAID);
         boolean allPaid = !project.getMilestones().isEmpty()
                 && project.getMilestones().stream().allMatch(item -> item.getStatus() == MilestoneStatus.PAID);
-        if (allPaid) project.setStatus(ProjectStatus.COMPLETED);
+        if (allPaid) {
+            project.setStatus(ProjectStatus.COMPLETED);
+            analyticsService.recordEvent(AnalyticsEventType.PROJECT_COMPLETED, currentUser.getId(), "CLIENT",
+                    "PROJECT", String.valueOf(project.getId()));
+        }
         return milestoneMapper.toResponse(milestone);
     }
 

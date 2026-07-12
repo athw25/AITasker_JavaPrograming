@@ -1,6 +1,7 @@
 package com.aitasker.dispute.service;
 
 import com.aitasker.common.response.PageResponse;
+import com.aitasker.dispute.dto.request.AddDisputeMessageRequest;
 import com.aitasker.dispute.dto.request.AddEvidenceRequest;
 import com.aitasker.dispute.dto.request.CreateDisputeRequest;
 import com.aitasker.dispute.dto.request.DisputeResolveRequest;
@@ -18,4 +19,6 @@ public interface DisputeService {
     DisputeResponse resolveDispute(Long id, DisputeResolveRequest request, User currentUser);
 
     DisputeResponse addEvidence(Long id, AddEvidenceRequest request, User currentUser);
+
+    DisputeResponse addMessage(Long id, AddDisputeMessageRequest request, User currentUser);
 }

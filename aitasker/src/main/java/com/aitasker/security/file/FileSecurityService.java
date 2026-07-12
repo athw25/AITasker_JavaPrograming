@@ -1,7 +1,9 @@
 package com.aitasker.security.file;
 
 import com.aitasker.expert.entity.Attachment;
+import com.aitasker.security.ProjectSecurityService;
 import com.aitasker.user.entity.User;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,7 +14,10 @@ import java.util.List;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FileSecurityService {
+
+    private final ProjectSecurityService projectSecurityService;
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList(
             "pdf", "docx", "doc", "png", "jpg", "jpeg", "zip", "xlsx", "xls"
@@ -76,6 +81,13 @@ public class FileSecurityService {
         }
 
         if (attachment.getUploadedBy().equals(currentUser.getId())) {
+            return;
+        }
+
+        // File gắn với một Project (Delivery, Milestone, Project Attachment...) thì cả hai
+        // phía Client và Expert của Project đó đều được phép tải xuống, không chỉ người upload.
+        if (attachment.getRelatedProjectId() != null) {
+            projectSecurityService.checkCanAccessProject(attachment.getRelatedProjectId(), currentUser);
             return;
         }
 

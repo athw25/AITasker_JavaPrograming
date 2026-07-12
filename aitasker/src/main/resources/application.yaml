@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:sqlserver://${DB_HOST:127.0.0.1}:${DB_PORT:1433};databaseName=${DB_NAME:AITasker};encrypt=false;trustServerCertificate=true
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:Aa123456}
+    password: ${DB_PASSWORD}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
@@ -35,7 +35,7 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:aitasker-jwt-secret-key-must-be-at-least-32-characters}
+    secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 ai:

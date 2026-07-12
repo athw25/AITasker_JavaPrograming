@@ -1,5 +1,7 @@
 package com.aitasker.review.service;
 
+import com.aitasker.analytics.enums.AnalyticsEventType;
+import com.aitasker.analytics.service.AnalyticsService;
 import com.aitasker.common.enums.ProjectStatus;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.project.entity.Project;
@@ -26,6 +28,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
+    private final AnalyticsService analyticsService;
 
     public ReviewResponse create(ReviewRequest request) {
 
@@ -126,6 +129,9 @@ public class ReviewService {
         review.setType(request.getType());
 
         review = reviewRepository.save(review);
+
+        analyticsService.recordEvent(AnalyticsEventType.REVIEW_SUBMITTED, reviewer.getId(),
+                reviewer.getRole().name(), "REVIEW", String.valueOf(review.getId()));
 
         return toResponse(review);
     }

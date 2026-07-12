@@ -1,15 +1,17 @@
 package com.aitasker.admin.service;
 
+import com.aitasker.common.response.PageResponse;
+import com.aitasker.exception.BusinessException;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.job.dto.JobPostResponse;
 import com.aitasker.job.entity.JobPost;
 import com.aitasker.job.repository.JobPostRepository;
 import com.aitasker.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -18,11 +20,17 @@ public class AdminJobService {
     private final ProjectRepository projectRepository;
 
     @Transactional(readOnly = true)
-    public List<JobPostResponse> getAllJobs(){
-        return jobPostRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public PageResponse<JobPostResponse> getAllJobs(int page, int size){
+        Page<JobPost> jobPage = jobPostRepository.findAll(PageRequest.of(page, size));
+        return new PageResponse<>(
+                jobPage.getContent().stream().map(this::toResponse).toList(),
+                jobPage.getNumber(),
+                jobPage.getSize(),
+                jobPage.getTotalElements(),
+                jobPage.getTotalPages(),
+                jobPage.isFirst(),
+                jobPage.isLast()
+        );
     }
 
     @Transactional
@@ -31,7 +39,7 @@ public class AdminJobService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Job not found"));
         if (projectRepository.existsByJob_Id(id)) {
-            throw new RuntimeException("Cannot delete job that has active projects");
+            throw new BusinessException("Cannot delete job that has active projects");
         }
 
         jobPostRepository.deleteById(id);
