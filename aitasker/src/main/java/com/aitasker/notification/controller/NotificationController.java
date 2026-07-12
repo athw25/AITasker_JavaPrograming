@@ -1,11 +1,11 @@
 package com.aitasker.notification.controller;
 
+import com.aitasker.common.response.ApiResponse;
 import com.aitasker.notification.entity.Notification;
 import com.aitasker.notification.service.NotificationService;
 import com.aitasker.security.userdetails.CustomUserDetails;
 import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,20 +23,18 @@ public class NotificationController {
     private final NotificationService notificationService;
 
     @GetMapping
-    public ResponseEntity<List<Notification>> getNotifications(Authentication authentication) {
+    public ApiResponse<List<Notification>> getNotifications(Authentication authentication) {
         User user = getCurrentUser(authentication);
-
-        return ResponseEntity.ok(notificationService.getMyNotifications(user));
+        return ApiResponse.success(notificationService.getMyNotifications(user));
     }
 
     @PutMapping("/{id}/read")
-    public ResponseEntity<Notification> markAsRead(
+    public ApiResponse<Notification> markAsRead(
             @PathVariable Long id,
             Authentication authentication
     ) {
         User user = getCurrentUser(authentication);
-
-        return ResponseEntity.ok(notificationService.markAsRead(id, user));
+        return ApiResponse.success(notificationService.markAsRead(id, user));
     }
 
     private User getCurrentUser(Authentication authentication) {

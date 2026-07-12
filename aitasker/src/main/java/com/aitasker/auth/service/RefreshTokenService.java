@@ -5,12 +5,16 @@ import com.aitasker.auth.repository.RefreshTokenRepository;
 import com.aitasker.exception.BadRequestException;
 import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
@@ -49,5 +53,14 @@ public class RefreshTokenService {
 
     public void revokeAllForUser(Long userId) {
         refreshTokenRepository.deleteByUser_Id(userId);
+    }
+
+    @Transactional
+    @Scheduled(cron = "0 0 3 * * *")
+    public void cleanupExpiredTokens() {
+        int deleted = refreshTokenRepository.deleteExpiredOrRevoked(LocalDateTime.now());
+        if (deleted > 0) {
+            log.info("Đã dọn {} refresh token hết hạn/đã thu hồi", deleted);
+        }
     }
 }

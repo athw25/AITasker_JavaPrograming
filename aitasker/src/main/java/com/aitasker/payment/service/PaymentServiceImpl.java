@@ -85,9 +85,9 @@ public class PaymentServiceImpl implements PaymentService {
             throw new BadRequestException("Payment phải ở trạng thái HELD mới có thể release");
         }
 
-        // 3. Nếu có Milestone → kiểm tra Milestone phải APPROVED
-        if (payment.getMilestone() != null) {
-            Milestone milestone = payment.getMilestone();
+        // 3. Nếu có Milestone → kiểm tra Milestone phải APPROVED, và đồng bộ sang PAID sau khi release
+        Milestone milestone = payment.getMilestone();
+        if (milestone != null) {
             if (milestone.getStatus() != com.aitasker.common.enums.MilestoneStatus.APPROVED) {
                 throw new BadRequestException("Milestone phải được APPROVED trước khi release tiền");
             }
@@ -96,6 +96,19 @@ public class PaymentServiceImpl implements PaymentService {
         // 4. Cập nhật trạng thái Payment
         payment.setStatus(PaymentStatus.RELEASED);
         paymentRepository.save(payment);
+
+        if (milestone != null) {
+            milestone.setStatus(com.aitasker.common.enums.MilestoneStatus.PAID);
+            milestoneRepository.save(milestone);
+
+            Project project = milestone.getProject();
+            boolean allPaid = !project.getMilestones().isEmpty() && project.getMilestones().stream()
+                    .allMatch(m -> m.getStatus() == com.aitasker.common.enums.MilestoneStatus.PAID);
+            if (allPaid) {
+                project.setStatus(com.aitasker.common.enums.ProjectStatus.COMPLETED);
+                projectRepository.save(project);
+            }
+        }
 
         // 5. Ghi Transaction RELEASE
         Transaction transaction = Transaction.builder()

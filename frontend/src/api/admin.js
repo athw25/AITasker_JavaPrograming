@@ -1,7 +1,7 @@
 import { apiClient, unwrap } from './client';
 
 export const adminApi = {
-  getUsers: () => apiClient.get('/admin/users').then((r) => r.data),
+  getUsers: () => apiClient.get('/admin/users').then(unwrap),
   banUser: (id) => apiClient.put(`/admin/users/${id}/ban`).then(unwrap),
   unbanUser: (id) => apiClient.put(`/admin/users/${id}/unban`).then(unwrap),
   getJobs: () => apiClient.get('/admin/jobs').then(unwrap),

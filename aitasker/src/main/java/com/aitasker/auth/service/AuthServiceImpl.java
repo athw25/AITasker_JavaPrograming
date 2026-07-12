@@ -4,14 +4,22 @@ import com.aitasker.audit.service.AuditLogService;
 import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
 import com.aitasker.auth.dto.RegisterRequest;
+import com.aitasker.auth.entity.PasswordResetToken;
+import com.aitasker.auth.repository.PasswordResetTokenRepository;
 import com.aitasker.common.enums.Role;
+import com.aitasker.email.service.EmailService;
+import com.aitasker.exception.BadRequestException;
 import com.aitasker.expert.repository.ExpertProfileRepository;
 import com.aitasker.security.jwt.JwtService;
 import com.aitasker.user.entity.User;
 import com.aitasker.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +31,14 @@ public class AuthServiceImpl implements AuthService {
     private final ExpertProfileRepository expertProfileRepository;
     private final AuditLogService auditLogService;
     private final RefreshTokenService refreshTokenService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
+
+    @Value("${app.password-reset.expiration-ms:1800000}")
+    private long resetExpirationMs;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -119,5 +135,51 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(String refreshTokenValue) {
         refreshTokenService.revoke(refreshTokenValue);
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            PasswordResetToken resetToken = PasswordResetToken.builder()
+                    .token(UUID.randomUUID().toString())
+                    .user(user)
+                    .expiryDate(LocalDateTime.now().plusNanos(resetExpirationMs * 1_000_000))
+                    .used(false)
+                    .build();
+            passwordResetTokenRepository.save(resetToken);
+
+            String resetLink = frontendUrl + "/reset-password?token=" + resetToken.getToken();
+            emailService.send(user.getEmail(), "Đặt lại mật khẩu AITasker",
+                    "Nhấn vào link sau để đặt lại mật khẩu (hết hạn sau 30 phút): " + resetLink);
+
+            auditLogService.log(user, "FORGOT_PASSWORD_REQUESTED", "Yêu cầu đặt lại mật khẩu");
+        });
+        // Không tiết lộ email có tồn tại hay không — luôn trả về thành công như nhau.
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new BadRequestException("Token đặt lại mật khẩu không hợp lệ"));
+
+        if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Token đã hết hạn hoặc đã được sử dụng");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        resetToken.setUsed(true);
+        passwordResetTokenRepository.save(resetToken);
+
+        refreshTokenService.revokeAllForUser(user.getId());
+        auditLogService.log(user, "PASSWORD_RESET", "Đặt lại mật khẩu thành công");
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.scheduling.annotation.Scheduled(cron = "0 30 3 * * *")
+    public void cleanupExpiredPasswordResetTokens() {
+        passwordResetTokenRepository.deleteExpiredOrUsed(LocalDateTime.now());
     }
 }

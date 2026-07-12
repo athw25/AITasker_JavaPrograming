@@ -1,5 +1,6 @@
 package com.aitasker.job.controller;
 
+import com.aitasker.common.response.ApiResponse;
 import com.aitasker.job.dto.JobPostRequest;
 import com.aitasker.job.dto.JobPostResponse;
 import com.aitasker.job.dto.JobSearchRequest;
@@ -7,7 +8,6 @@ import com.aitasker.job.service.JobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,46 +23,47 @@ public class JobController {
     @PostMapping
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "Create a new job post")
-    public ResponseEntity<JobPostResponse> create (@RequestBody JobPostRequest request){
-        return ResponseEntity.ok(jobService.create(request));
+    public ApiResponse<JobPostResponse> create(@RequestBody JobPostRequest request) {
+        return ApiResponse.success(jobService.create(request));
     }
 
     @GetMapping
-    @Operation(summary = "Get all ob posts")
-    public ResponseEntity<List<JobPostResponse>> getAll(){
-        return ResponseEntity.ok(jobService.getAll());
+    @Operation(summary = "Get all job posts")
+    public ApiResponse<List<JobPostResponse>> getAll() {
+        return ApiResponse.success(jobService.getAll());
     }
 
     @GetMapping("/me")
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "Get jobs created by the authenticated client")
-    public ResponseEntity<List<JobPostResponse>> getMyJobs() {
-        return ResponseEntity.ok(jobService.getMyJobs());
+    public ApiResponse<List<JobPostResponse>> getMyJobs() {
+        return ApiResponse.success(jobService.getMyJobs());
     }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get job post by ID")
-    public ResponseEntity<JobPostResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(jobService.getById(id));
+    public ApiResponse<JobPostResponse> getById(@PathVariable Long id) {
+        return ApiResponse.success(jobService.getById(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "update a job post")
-    public ResponseEntity<JobPostResponse> update(@PathVariable Long id,@RequestBody JobPostRequest request){
-        return ResponseEntity.ok(jobService.update(id, request));
+    public ApiResponse<JobPostResponse> update(@PathVariable Long id, @RequestBody JobPostRequest request) {
+        return ApiResponse.success(jobService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "Delete a job post")
-    public ResponseEntity<Void> delete(@PathVariable Long id){
+    public ApiResponse<Void> delete(@PathVariable Long id) {
         jobService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ApiResponse.success("Đã xóa job", null);
     }
 
     @GetMapping("/search")
     @Operation(summary = "Search job post")
-    public ResponseEntity<List<JobPostResponse>> search(@ModelAttribute JobSearchRequest request){
-        return ResponseEntity.ok(jobService.search(request));
+    public ApiResponse<List<JobPostResponse>> search(@ModelAttribute JobSearchRequest request) {
+        return ApiResponse.success(jobService.search(request));
     }
 }

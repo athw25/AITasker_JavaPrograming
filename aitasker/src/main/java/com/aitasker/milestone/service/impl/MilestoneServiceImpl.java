@@ -18,6 +18,12 @@ import com.aitasker.milestone.exception.MilestoneNotFoundException;
 import com.aitasker.milestone.mapper.MilestoneMapper;
 import com.aitasker.milestone.repository.MilestoneRepository;
 import com.aitasker.milestone.service.MilestoneService;
+import com.aitasker.payment.entity.Payment;
+import com.aitasker.payment.entity.Transaction;
+import com.aitasker.payment.enums.PaymentStatus;
+import com.aitasker.payment.enums.TransactionType;
+import com.aitasker.payment.repository.PaymentRepository;
+import com.aitasker.payment.repository.TransactionRepository;
 import com.aitasker.project.entity.Project;
 import com.aitasker.project.exception.InvalidProjectStateException;
 import com.aitasker.project.exception.ProjectNotFoundException;
@@ -39,6 +45,8 @@ public class MilestoneServiceImpl implements MilestoneService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryService deliveryService;
     private final MilestoneMapper milestoneMapper;
+    private final PaymentRepository paymentRepository;
+    private final TransactionRepository transactionRepository;
 
     @Override
     @Transactional
@@ -135,7 +143,23 @@ public class MilestoneServiceImpl implements MilestoneService {
         if (milestone.getStatus() != MilestoneStatus.APPROVED) {
             throw new InvalidMilestoneStateException("Only an approved milestone can be paid");
         }
-        // TODO Integrate the payment provider/escrow transaction before marking the milestone paid.
+
+        Payment payment = paymentRepository.findByMilestoneId(id)
+                .orElseThrow(() -> new InvalidMilestoneStateException(
+                        "Chưa có khoản tiền nào được nạp (deposit) cho Milestone này"));
+        if (payment.getStatus() != PaymentStatus.HELD) {
+            throw new InvalidMilestoneStateException("Payment của Milestone này không ở trạng thái HELD");
+        }
+
+        payment.setStatus(PaymentStatus.RELEASED);
+        paymentRepository.save(payment);
+        transactionRepository.save(Transaction.builder()
+                .payment(payment)
+                .type(TransactionType.RELEASE)
+                .amount(payment.getAmount())
+                .description("Release Payment cho Milestone #" + milestone.getId())
+                .build());
+
         milestone.setStatus(MilestoneStatus.PAID);
         boolean allPaid = !project.getMilestones().isEmpty()
                 && project.getMilestones().stream().allMatch(item -> item.getStatus() == MilestoneStatus.PAID);

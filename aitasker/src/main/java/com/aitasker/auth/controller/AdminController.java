@@ -1,6 +1,6 @@
 package com.aitasker.auth.controller;
 
-import org.springframework.http.ResponseEntity;
+import com.aitasker.common.response.ApiResponse;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     @GetMapping("/test")
-    public ResponseEntity<String> test() {
-        return ResponseEntity.ok("Admin access success");
+    public ApiResponse<String> test() {
+        return ApiResponse.success("Admin access success");
     }
 }

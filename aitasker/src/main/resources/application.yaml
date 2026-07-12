@@ -41,6 +41,9 @@ management:
         include: health
 
 app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  password-reset:
+    expiration-ms: ${PASSWORD_RESET_EXPIRATION_MS:1800000}
   jwt:
     secret: ${JWT_SECRET:aitasker-jwt-secret-key-must-be-at-least-32-characters}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
@@ -61,6 +64,9 @@ app:
   seed:
     demo-data: ${SEED_DEMO_DATA:false}
   ratelimit:
-    login:
-      max-attempts: ${LOGIN_RATE_LIMIT:5}
-      window-ms: ${LOGIN_RATE_WINDOW_MS:60000}
+    auth:
+      max-attempts: ${AUTH_RATE_LIMIT:5}
+      window-ms: ${AUTH_RATE_WINDOW_MS:60000}
+    ai:
+      max-attempts: ${AI_RATE_LIMIT:20}
+      window-ms: ${AI_RATE_WINDOW_MS:60000}

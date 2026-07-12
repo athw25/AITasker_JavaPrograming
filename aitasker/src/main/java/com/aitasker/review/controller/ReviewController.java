@@ -1,12 +1,13 @@
 package com.aitasker.review.controller;
 
+import com.aitasker.common.response.ApiResponse;
 import com.aitasker.review.dto.ReviewRequest;
 import com.aitasker.review.dto.ReviewResponse;
 import com.aitasker.review.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,13 +21,13 @@ public class ReviewController {
 
     @PostMapping
     @Operation(summary = "Create a review")
-    public ResponseEntity<ReviewResponse> create(@RequestBody ReviewRequest request){
-        return ResponseEntity.ok(reviewService.create(request));
+    public ApiResponse<ReviewResponse> create(@Valid @RequestBody ReviewRequest request) {
+        return ApiResponse.success(reviewService.create(request));
     }
 
     @GetMapping("/user/{id}")
     @Operation(summary = "Get reviews for a user")
-    public ResponseEntity<List<ReviewResponse>> getByUser (@PathVariable Long id){
-        return ResponseEntity.ok(reviewService.getByUser(id));
+    public ApiResponse<List<ReviewResponse>> getByUser(@PathVariable Long id) {
+        return ApiResponse.success(reviewService.getByUser(id));
     }
 }

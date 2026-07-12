@@ -18,8 +18,8 @@ public class AdminUserController {
     private final AdminUserService adminUserService;
 
     @GetMapping
-    public List<UserSummaryResponse> getAllUsers() {
-        return adminUserService.getAllUsers();
+    public ApiResponse<List<UserSummaryResponse>> getAllUsers() {
+        return ApiResponse.success(adminUserService.getAllUsers());
     }
 
     @PutMapping("/{id}/ban")

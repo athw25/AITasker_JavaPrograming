@@ -17,11 +17,16 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class FileStorageService {
+
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".pdf", ".docx", ".doc", ".png", ".jpg", ".jpeg", ".zip");
+    private static final long MAX_FILE_SIZE = 20L * 1024 * 1024;
 
     private final AttachmentRepository attachmentRepository;
 
@@ -32,17 +37,26 @@ public class FileStorageService {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("File không được để trống");
         }
+        if (file.getSize() > MAX_FILE_SIZE) {
+            throw new BadRequestException("File vượt quá kích thước tối đa 20MB");
+        }
+
+        String original = file.getOriginalFilename();
+        String extension = extractExtension(original);
+        if (!ALLOWED_EXTENSIONS.contains(extension.toLowerCase())) {
+            throw new BadRequestException("Định dạng file không được hỗ trợ: " + extension);
+        }
+
         try {
+            byte[] header = readHeader(file);
+            if (!matchesDeclaredType(extension.toLowerCase(), header)) {
+                throw new BadRequestException("Nội dung file không khớp với định dạng khai báo (" + extension + ")");
+            }
+
             Path dir = Path.of(uploadDir);
             Files.createDirectories(dir);
 
-            String extension = "";
-            String original = file.getOriginalFilename();
-            if (original != null && original.contains(".")) {
-                extension = original.substring(original.lastIndexOf('.'));
-            }
             String storedName = UUID.randomUUID() + extension;
-
             Path target = dir.resolve(storedName);
             Files.copy(file.getInputStream(), target);
 
@@ -58,6 +72,47 @@ public class FileStorageService {
         } catch (IOException e) {
             throw new BadRequestException("Lưu file thất bại: " + e.getMessage());
         }
+    }
+
+    private String extractExtension(String originalFileName) {
+        if (originalFileName == null || !originalFileName.contains(".")) {
+            return "";
+        }
+        return originalFileName.substring(originalFileName.lastIndexOf('.'));
+    }
+
+    private byte[] readHeader(MultipartFile file) throws IOException {
+        byte[] buffer = new byte[8];
+        try (var in = file.getInputStream()) {
+            int read = in.read(buffer);
+            return read > 0 ? java.util.Arrays.copyOf(buffer, read) : new byte[0];
+        }
+    }
+
+    /**
+     * Kiểm tra "magic bytes" thật của file thay vì chỉ tin vào phần mở rộng/Content-Type
+     * do client gửi lên — chặn trường hợp đổi tên file .exe thành .pdf.
+     */
+    private boolean matchesDeclaredType(String extension, byte[] header) {
+        if (header.length < 4) return false;
+
+        return switch (extension) {
+            case ".pdf" -> startsWith(header, 0x25, 0x50, 0x44, 0x46); // %PDF
+            case ".png" -> startsWith(header, 0x89, 0x50, 0x4E, 0x47);
+            case ".jpg", ".jpeg" -> startsWith(header, 0xFF, 0xD8, 0xFF);
+            case ".zip", ".docx" -> startsWith(header, 0x50, 0x4B, 0x03, 0x04)
+                    || startsWith(header, 0x50, 0x4B, 0x05, 0x06);
+            case ".doc" -> startsWith(header, 0xD0, 0xCF, 0x11, 0xE0);
+            default -> false;
+        };
+    }
+
+    private boolean startsWith(byte[] header, int... expected) {
+        if (header.length < expected.length) return false;
+        for (int i = 0; i < expected.length; i++) {
+            if ((header[i] & 0xFF) != expected[i]) return false;
+        }
+        return true;
     }
 
     public Attachment getMetadata(Long id) {

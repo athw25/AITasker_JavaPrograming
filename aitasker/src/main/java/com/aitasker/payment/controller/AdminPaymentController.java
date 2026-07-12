@@ -41,4 +41,10 @@ public class AdminPaymentController {
     public ResponseEntity<ApiResponse<Withdrawal>> approveWithdrawal(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(escrowService.approveWithdrawal(id)));
     }
+
+    @PutMapping("/withdrawals/{id}/reject")
+    @Operation(summary = "Admin từ chối Withdrawal")
+    public ResponseEntity<ApiResponse<Withdrawal>> rejectWithdrawal(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(escrowService.rejectWithdrawal(id)));
+    }
 }
