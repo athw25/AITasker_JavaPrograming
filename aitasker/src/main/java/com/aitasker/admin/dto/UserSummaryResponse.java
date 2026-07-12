@@ -1,7 +1,6 @@
 package com.aitasker.admin.dto;
 
 import com.aitasker.common.enums.Role;
-import com.aitasker.common.enums.UserStatus;
 import com.aitasker.user.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,7 +20,6 @@ public class UserSummaryResponse {
     private String name;
     private String email;
     private Role role;
-    private UserStatus status;
     private LocalDateTime createdAt;
 
     public static UserSummaryResponse from(User user) {
@@ -30,7 +28,6 @@ public class UserSummaryResponse {
                 user.getName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getStatus(),
                 user.getCreatedAt()
         );
     }
