@@ -6,6 +6,7 @@ import com.aitasker.job.dto.JobSearchRequest;
 import com.aitasker.job.service.JobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,7 +24,7 @@ public class JobController {
     @PostMapping
     @PreAuthorize("hasRole('CLIENT')")
     @Operation(summary = "Create a new job post")
-    public ResponseEntity<JobPostResponse> create (@RequestBody JobPostRequest request){
+    public ResponseEntity<JobPostResponse> create(@Valid @RequestBody JobPostRequest request) {
         return ResponseEntity.ok(jobService.create(request));
     }
 

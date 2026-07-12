@@ -7,6 +7,8 @@ import com.aitasker.proposal.dto.response.ProposalResponseDTO;
 import com.aitasker.proposal.service.ProposalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import com.aitasker.security.userdetails.CustomUserDetails;
@@ -25,6 +27,7 @@ public class ProposalController {
     }
 
     // API 1: Nộp đề xuất mới
+    @PreAuthorize("hasRole('EXPERT')")
     @PostMapping
     public ApiResponse<ProposalResponseDTO> createProposal(
             @Valid @RequestBody ProposalRequestDTO request,
@@ -51,6 +54,7 @@ public class ProposalController {
     }
 
     // API 3: Client chấp nhận đề xuất
+    @PreAuthorize("hasRole('CLIENT')")
     @PutMapping("/{id}/accept")
     public ApiResponse<String> acceptProposal(
             @PathVariable Long id,
@@ -61,6 +65,7 @@ public class ProposalController {
     }
 
     // API 4: Client từ chối đề xuất
+    @PreAuthorize("hasRole('CLIENT')")
     @PutMapping("/{id}/reject")
     public ApiResponse<String> rejectProposal(
             @PathVariable Long id,
@@ -71,6 +76,7 @@ public class ProposalController {
     }
 
     // API 5: Expert rút lại đề xuất
+    @PreAuthorize("hasRole('EXPERT')")
     @PutMapping("/{id}/withdraw")
     public ApiResponse<String> withdrawProposal(
             @PathVariable Long id,

@@ -67,7 +67,7 @@ public class JobService{
         job.setDescription(request.getDescription());
         job.setBudget(request.getBudget());
         job.setDeadline(request.getDeadline());
-        job.setRequiredSkills(request.getRequiredSkills());
+        job.setRequiredSkills(request.getSkills());
 
         return toResponse(jobPostRepository.save(job));
     }

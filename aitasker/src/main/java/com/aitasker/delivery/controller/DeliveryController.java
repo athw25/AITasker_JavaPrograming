@@ -40,6 +40,7 @@ public class DeliveryController {
     }
 
     @GetMapping("/milestone/{id}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a milestone's complete delivery history")
     public ApiResponse<List<DeliveryResponse>> byMilestone(@PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails principal) {

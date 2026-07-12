@@ -6,6 +6,7 @@ import com.aitasker.security.userdetails.CustomUserDetails;
 import com.aitasker.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,6 +22,7 @@ public class MessageController {
 
     private final MessageService messageService;
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/project/{projectId}")
     public ResponseEntity<List<MessageResponse>> getProjectMessages(
             @PathVariable Long projectId,

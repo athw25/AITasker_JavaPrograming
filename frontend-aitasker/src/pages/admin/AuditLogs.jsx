@@ -33,7 +33,7 @@ export default function AuditLogs() {
             <tbody className="divide-y divide-slate-100">
               {filtered.map((l) => (
                 <tr key={l.id}>
-                  <td className="px-5 py-3">{l.actor?.name || l.actor?.email || 'Hệ thống'}</td>
+                  <td className="px-5 py-3">{l.actorEmail || 'Hệ thống'}</td>
                   <td className="px-5 py-3"><Badge color="blue">{l.action}</Badge></td>
                   <td className="px-5 py-3 text-slate-500">{l.description}</td>
                   <td className="px-5 py-3">{formatDateTime(l.createdAt)}</td>

@@ -31,9 +31,7 @@ public class AdminStatisticsService {
                 .openJobs(jobPostRepository.countByStatus(JobStatus.OPEN))
                 .completedJobs(jobPostRepository.countByStatus(JobStatus.CLOSED))
                 .totalProjects(projectRepository.count())
-                .completedProjects(projectRepository.findAll().stream()
-                        .filter(project -> project.getStatus() == ProjectStatus.COMPLETED)
-                        .count())
+                .completedProjects(projectRepository.countByStatus(ProjectStatus.COMPLETED))
                 .totalReviews(reviewRepository.count())
                 .build();
     }

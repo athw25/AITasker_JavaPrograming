@@ -236,7 +236,7 @@ public class RecommendationService {
     private Map<Long, Double> fetchBatchAverageRatings() {
         return reviewRepository.getAverageRatingsForExperts().stream()
                 .collect(Collectors.toMap(
-                        row -> (Long) row[0],
+                        row -> ((Number) row[0]).longValue(),
                         row -> row[1] != null ? ((Number) row[1]).doubleValue() : 0.0
                 ));
     }
