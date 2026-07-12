@@ -1,5 +1,6 @@
 package com.aitasker.notification.service;
 
+import com.aitasker.email.service.EmailService;
 import com.aitasker.exception.ResourceNotFoundException;
 import com.aitasker.notification.entity.Notification;
 import com.aitasker.notification.repository.NotificationRepository;
@@ -21,6 +22,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final EmailService emailService;
 
     @Transactional
     public Notification createNotification(
@@ -33,6 +35,8 @@ public class NotificationService {
         User recipient = userRepository.findById(recipientId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Recipient not found"));
+
+        emailService.send(recipient.getEmail(), title, content);
 
         Notification notification = Notification.builder()
                 .recipient(recipient)

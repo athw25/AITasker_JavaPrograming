@@ -50,6 +50,16 @@ public class ProposalController {
         return ApiResponse.success("Lấy danh sách đề xuất của chuyên gia", proposalService.getMyProposals(expertId));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<ProposalResponseDTO> getProposalDetail(
+            @PathVariable Long id,
+            Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Long currentUserId = userDetails.getUser().getId();
+        boolean isAdmin = userDetails.getUser().getRole() == com.aitasker.common.enums.Role.ADMIN;
+        return ApiResponse.success("Lấy chi tiết đề xuất thành công", proposalService.getProposalDetail(id, currentUserId, isAdmin));
+    }
+
     // API 3: Client chấp nhận đề xuất
     @PutMapping("/{id}/accept")
     public ApiResponse<String> acceptProposal(

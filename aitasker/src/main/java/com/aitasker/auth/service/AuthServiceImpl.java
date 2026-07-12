@@ -1,5 +1,6 @@
 package com.aitasker.auth.service;
 
+import com.aitasker.audit.service.AuditLogService;
 import com.aitasker.auth.dto.AuthResponse;
 import com.aitasker.auth.dto.LoginRequest;
 import com.aitasker.auth.dto.RegisterRequest;
@@ -20,6 +21,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final ExpertProfileRepository expertProfileRepository;
+    private final AuditLogService auditLogService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     public AuthResponse register(RegisterRequest request) {
@@ -76,16 +79,45 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalArgumentException("Email hoặc mật khẩu không đúng!");
         }
 
+        if (user.getStatus() != com.aitasker.common.enums.UserStatus.ACTIVE) {
+            throw new IllegalArgumentException("Tài khoản đã bị khóa hoặc vô hiệu hóa!");
+        }
+
         // Gói Entity User (của TV2) vào trong CustomUserDetails (của TV3)
         com.aitasker.security.userdetails.CustomUserDetails userDetails = new com.aitasker.security.userdetails.CustomUserDetails(user);
 
         // 4. Sinh JWT Token
         String jwtToken = jwtService.generateToken(userDetails);
+        com.aitasker.auth.entity.RefreshToken refreshToken = refreshTokenService.create(user);
+
+        auditLogService.log(user, "LOGIN", "Đăng nhập thành công");
 
         // 5. Trả token về cho Client
         return AuthResponse.builder()
                 .token(jwtToken)
+                .refreshToken(refreshToken.getToken())
                 .message("Đăng nhập thành công!")
                 .build();
+    }
+
+    @Override
+    public AuthResponse refresh(String refreshTokenValue) {
+        com.aitasker.auth.entity.RefreshToken refreshToken = refreshTokenService.verify(refreshTokenValue);
+        User user = refreshToken.getUser();
+
+        com.aitasker.security.userdetails.CustomUserDetails userDetails =
+                new com.aitasker.security.userdetails.CustomUserDetails(user);
+        String jwtToken = jwtService.generateToken(userDetails);
+
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .refreshToken(refreshToken.getToken())
+                .message("Làm mới token thành công!")
+                .build();
+    }
+
+    @Override
+    public void logout(String refreshTokenValue) {
+        refreshTokenService.revoke(refreshTokenValue);
     }
 }
