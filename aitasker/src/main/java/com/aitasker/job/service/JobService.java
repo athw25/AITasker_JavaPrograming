@@ -33,6 +33,7 @@ public class JobService{
         job.setTitle(request.getTitle());
         job.setDescription(request.getDescription());
         job.setBudget(request.getBudget());
+        job.setStatus(JobStatus.OPEN);
         job.setClient(client);
         return toResponse(jobPostRepository.save(job));
     }
