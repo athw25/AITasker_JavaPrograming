@@ -23,7 +23,6 @@ public class AuditLogService {
                 .details(details)
                 .actorEmail(actorEmail)
                 .ipAddress(ipAddress != null ? ipAddress : "UNKNOWN")
-                .createdAt(LocalDateTime.now())
                 .build();
         auditLogRepository.save(auditLog);
     }

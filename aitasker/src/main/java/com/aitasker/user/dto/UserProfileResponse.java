@@ -12,6 +12,7 @@ import lombok.Getter;
 public class UserProfileResponse {
     private Long id;
     private String fullName;
+    private String name; // Thêm name để tương thích với user.name của frontend
     private String email;
     private Role role;
     private UserStatus status;

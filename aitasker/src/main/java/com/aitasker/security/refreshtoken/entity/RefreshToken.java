@@ -1,5 +1,6 @@
 package com.aitasker.security.refreshtoken.entity;
 
+import com.aitasker.common.entity.BaseEntity;
 import com.aitasker.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,11 +13,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class RefreshToken {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class RefreshToken extends BaseEntity {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)

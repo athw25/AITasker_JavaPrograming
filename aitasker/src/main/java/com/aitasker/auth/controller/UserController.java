@@ -17,6 +17,7 @@ public class UserController {
         return ResponseEntity.ok(UserProfileResponse.builder()
                 .id(user.getId())
                 .fullName(user.getName())
+                .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
                 .status(user.getStatus())

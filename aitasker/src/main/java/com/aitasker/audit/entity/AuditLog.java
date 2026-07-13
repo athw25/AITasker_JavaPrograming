@@ -1,8 +1,8 @@
 package com.aitasker.audit.entity;
 
+import com.aitasker.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "audit_logs")
@@ -11,11 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AuditLog {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class AuditLog extends BaseEntity {
 
     @Column(nullable = false)
     private String action;
@@ -28,7 +24,4 @@ public class AuditLog {
 
     @Column(length = 2000)
     private String details;
-
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
 }
