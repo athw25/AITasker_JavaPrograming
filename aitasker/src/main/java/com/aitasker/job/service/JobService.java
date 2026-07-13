@@ -41,6 +41,7 @@ public class JobService{
         job.setBudget(request.getBudget());
         job.setDeadline(request.getDeadline());
         job.setRequiredSkills(request.getRequiredSkills());
+        job.setStatus(JobStatus.OPEN);
         job.setClient(client);
         JobPost saved = jobPostRepository.save(job);
         analyticsService.recordEvent(AnalyticsEventType.JOB_CREATED, client.getId(), Role.CLIENT.name(),
