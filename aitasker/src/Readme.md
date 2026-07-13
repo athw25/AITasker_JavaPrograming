@@ -17,3 +17,5 @@ app:
     password: MatKhauCuaBan
     
  // Lưu ý: seeder chỉ chạy nếu DB chưa có Admin nào. Nếu bạn đã lỡ tự đăng ký được 1 tài khoản ADMIN bằng lỗ hổng cũ trước khi vá, seeder sẽ không tạo thêm (vì hệ thống đã có Admin) — cứ dùng tài khoản đó, không ảnh hưởng gì.
+
+ 
