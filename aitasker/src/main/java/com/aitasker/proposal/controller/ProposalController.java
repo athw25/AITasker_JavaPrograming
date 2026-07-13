@@ -50,6 +50,11 @@ public class ProposalController {
         return ApiResponse.success("Lấy danh sách đề xuất của chuyên gia", proposalService.getMyProposals(expertId));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<ProposalResponseDTO> getById(@PathVariable Long id) {
+        return ApiResponse.success("Lấy chi tiết đề xuất thành công", proposalService.getById(id));
+    }
+
     // API 3: Client chấp nhận đề xuất
     @PutMapping("/{id}/accept")
     public ApiResponse<String> acceptProposal(

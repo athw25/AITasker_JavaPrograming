@@ -28,7 +28,7 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendPaymentNotification(String recipientEmail, String projectTitle, double amount, String status) {
+    public void sendPaymentNotification(String recipientEmail, String projectTitle, java.math.BigDecimal amount, String status) {
         String subject = "[AITasker] Thông báo giao dịch thanh toán";
         String content = String.format(
                 "Xin chào,\n\nGiao dịch thanh toán trị giá $%.2f cho dự án '%s' của bạn đã chuyển sang trạng thái: %s.",

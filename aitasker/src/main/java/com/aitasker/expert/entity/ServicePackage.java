@@ -27,11 +27,14 @@ public class ServicePackage extends BaseEntity {
     @Column(nullable = false)
     private String packageName;
 
-    // double -> BigDecimal: tránh sai số dấu phẩy động khi tính tiền.
     @Column(nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
     @Column(nullable = false)
     private int deliveryDays;
 
+    // Admin có thể ẩn (hide) service vi phạm mà không cần xoá dữ liệu.
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean active = true;
 }

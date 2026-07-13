@@ -146,6 +146,12 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Transaction> getMyTransactionHistory(Long userId) {
+        return transactionRepository.findByPayment_Project_Client_IdOrPayment_Project_Expert_IdOrderByCreatedAtDesc(userId, userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Transaction> getAllTransactions() {
         return transactionRepository.findAll();
     }

@@ -44,7 +44,6 @@ public class DisputeServiceImpl implements DisputeService {
     private final ProjectRepository projectRepository;
     private final PaymentService paymentService;
     private final AnalyticsService analyticsService;
-// import: import com.aitasker.payment.service.PaymentService;
 
     private static final List<DisputeStatus> OPEN_STATES =
             List.of(DisputeStatus.OPEN, DisputeStatus.IN_REVIEW);
@@ -92,22 +91,28 @@ public class DisputeServiceImpl implements DisputeService {
     public PageResponse<DisputeResponse> getDisputes(String status, int page, int size, User currentUser) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<Dispute> result;
+        DisputeStatus disputeStatus = null;
         if (status != null && !status.isBlank()) {
-            DisputeStatus disputeStatus;
             try {
                 disputeStatus = DisputeStatus.valueOf(status.toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new BadRequestException("status không hợp lệ: " + status);
             }
-            result = disputeRepository.findByStatus(disputeStatus, pageable);
-        } else {
-            result = disputeRepository.findAll(pageable);
         }
 
-        // ADMIN xem tất cả; CLIENT/EXPERT chỉ xem dispute liên quan tới mình
+        // Lọc quyền truy cập ngay trong query -> totalElements/totalPages chính xác.
+        Page<Dispute> result;
+        if (isAdmin(currentUser)) {
+            result = (disputeStatus != null)
+                    ? disputeRepository.findByStatus(disputeStatus, pageable)
+                    : disputeRepository.findAll(pageable);
+        } else {
+            result = (disputeStatus != null)
+                    ? disputeRepository.findByStatusAndParticipant(disputeStatus, currentUser.getId(), pageable)
+                    : disputeRepository.findByParticipant(currentUser.getId(), pageable);
+        }
+
         List<DisputeResponse> content = result.getContent().stream()
-                .filter(d -> isAdmin(currentUser) || isParticipant(d, currentUser))
                 .map(this::toResponse)
                 .collect(Collectors.toList());
 
@@ -146,11 +151,11 @@ public class DisputeServiceImpl implements DisputeService {
                 throw new BadRequestException("Cần truyền paymentId khi có refundAmount");
             }
             paymentService.refund(
-                request.getPaymentId(),
-                request.getRefundAmount(),
-                "Hoàn tiền do Dispute #" + id + ": " + request.getResolution()
+                    request.getPaymentId(),
+                    request.getRefundAmount(),
+                    "Hoàn tiền do Dispute #" + id + ": " + request.getResolution()
             );
-}
+        }
 
         dispute.setStatus(request.getStatus());
         dispute.setResolution(request.getResolution());
@@ -201,8 +206,6 @@ public class DisputeServiceImpl implements DisputeService {
 
         return toResponse(disputeRepository.save(dispute));
     }
-
-    // ===== Helper methods =====
 
     private Dispute getDisputeOrThrow(Long id) {
         return disputeRepository.findById(id)

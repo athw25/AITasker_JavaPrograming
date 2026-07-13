@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 public interface JobPostRepository extends JpaRepository<JobPost, Long> {
@@ -21,6 +22,7 @@ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
         AND (:minBudget IS NULL OR j.budget >= :minBudget)
         AND (:maxBudget IS NULL OR j.budget <= :maxBudget)
         AND (:status IS NULL OR j.status = :status)
+        AND (:deadlineBefore IS NULL OR j.deadline <= :deadlineBefore)
     """)
 
     List<JobPost> search(
@@ -28,6 +30,7 @@ public interface JobPostRepository extends JpaRepository<JobPost, Long> {
       @Param("skills") String skills,
       @Param("minBudget") BigDecimal minBudget,
       @Param("maxBudget") BigDecimal maxBudget,
-      @Param("status") JobStatus status
+      @Param("status") JobStatus status,
+      @Param("deadlineBefore") LocalDate deadlineBefore
     );
 }

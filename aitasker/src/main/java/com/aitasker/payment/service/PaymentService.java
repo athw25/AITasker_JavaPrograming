@@ -11,6 +11,8 @@ public interface PaymentService {
     Payment deposit(DepositRequest request, Long clientId);
     Payment release(ReleaseRequest request, Long clientId);
     List<Transaction> getTransactionHistory(Long paymentId);
+
+    List<Transaction> getMyTransactionHistory(Long userId);
     List<Transaction> getAllTransactions();
     Payment refund(Long paymentId, java.math.BigDecimal amount, String reason);
 }

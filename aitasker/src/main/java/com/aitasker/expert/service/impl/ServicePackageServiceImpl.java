@@ -26,6 +26,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         pack.setPackageName(request.getPackageName());
         pack.setPrice(request.getPrice());
         pack.setDeliveryDays(request.getDeliveryDays());
+        pack.setActive(true);
 
         ServicePackage saved = packageRepository.save(pack);
         return convertToResponse(saved);
@@ -33,7 +34,9 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Override
     public List<ServicePackageResponse> getAllPackages() {
+        // Chỉ hiển thị công khai các gói đang active (chưa bị Admin hide).
         return packageRepository.findAll().stream()
+                .filter(ServicePackage::isActive)
                 .map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
@@ -52,11 +55,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     public ServicePackageResponse updatePackage(Long currentUserId, Long packageId, com.aitasker.expert.dto.request.UpdateServicePackageRequest request) {
         ServicePackage pack = packageRepository.findById(packageId)
                 .orElseThrow(() -> new com.aitasker.expert.exception.ServicePackageNotFoundException("Không tìm thấy gói dịch vụ cần sửa!"));
-        
-        // Kiểm tra quyền sở hữu (Security Integration)
+
         if (!pack.getExpertId().equals(currentUserId)) {
-            // Trước đây ném ExpertNotFoundException (không có handler riêng
-            // -> rơi vào nhánh 500 chung) dù bản chất đây là lỗi 403 Forbidden.
             throw new ForbiddenException("Bạn không có quyền chỉnh sửa gói dịch vụ của người khác!");
         }
 
@@ -72,8 +72,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     public void deletePackage(Long currentUserId, Long packageId) {
         ServicePackage pack = packageRepository.findById(packageId)
                 .orElseThrow(() -> new com.aitasker.expert.exception.ServicePackageNotFoundException("Không tìm thấy gói dịch vụ cần xóa!"));
-        
-        // Kiểm tra quyền sở hữu (Security Integration)
+
         if (!pack.getExpertId().equals(currentUserId)) {
             throw new ForbiddenException("Bạn không có quyền xóa gói dịch vụ của người khác!");
         }

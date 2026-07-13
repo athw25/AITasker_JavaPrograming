@@ -1,7 +1,10 @@
 package com.aitasker.auth.controller;
 
+import com.aitasker.security.userdetails.CustomUserDetails;
+import com.aitasker.user.dto.UserProfileResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -9,7 +12,14 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
     @GetMapping("/me")
-    public ResponseEntity<String> me(Authentication authentication) {
-        return ResponseEntity.ok(authentication.getName());
+    public ResponseEntity<UserProfileResponse> me(@AuthenticationPrincipal CustomUserDetails principal) {
+        var user = principal.getUser();
+        return ResponseEntity.ok(UserProfileResponse.builder()
+                .id(user.getId())
+                .fullName(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .status(user.getStatus())
+                .build());
     }
 }

@@ -7,6 +7,7 @@ export const adminApi = {
   unbanUser: (id) => apiClient.put(`/admin/users/${id}/unban`).then(unwrap),
   getJobs: (params = {}) => apiClient.get('/admin/jobs', { params }).then(unwrap),
   deleteJob: (id) => apiClient.delete(`/admin/jobs/${id}`).then(unwrap),
+  getProjects: (params = {}) => apiClient.get('/admin/projects', { params }).then(unwrap),
   getDashboard: () => apiClient.get('/admin/dashboard').then(unwrap),
   getAnalytics: () => apiClient.get('/admin/analytics').then(unwrap),
   getReports: () => apiClient.get('/admin/reports').then(unwrap),

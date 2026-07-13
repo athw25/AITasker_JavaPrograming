@@ -20,6 +20,10 @@ import com.aitasker.milestone.exception.MilestoneNotFoundException;
 import com.aitasker.milestone.mapper.MilestoneMapper;
 import com.aitasker.milestone.repository.MilestoneRepository;
 import com.aitasker.milestone.service.MilestoneService;
+import com.aitasker.payment.dto.ReleaseRequest;
+import com.aitasker.payment.entity.Payment;
+import com.aitasker.payment.repository.PaymentRepository;
+import com.aitasker.payment.service.PaymentService;
 import com.aitasker.project.entity.Project;
 import com.aitasker.project.exception.InvalidProjectStateException;
 import com.aitasker.project.exception.ProjectNotFoundException;
@@ -42,6 +46,8 @@ public class MilestoneServiceImpl implements MilestoneService {
     private final DeliveryService deliveryService;
     private final AnalyticsService analyticsService;
     private final MilestoneMapper milestoneMapper;
+    private final PaymentRepository paymentRepository;
+    private final PaymentService paymentService;
 
     @Override
     @Transactional
@@ -140,7 +146,12 @@ public class MilestoneServiceImpl implements MilestoneService {
         if (milestone.getStatus() != MilestoneStatus.APPROVED) {
             throw new InvalidMilestoneStateException("Only an approved milestone can be paid");
         }
-        // TODO Integrate the payment provider/escrow transaction before marking the milestone paid.
+        Payment payment = paymentRepository.findByMilestoneId(milestone.getId())
+                .orElseThrow(() -> new InvalidMilestoneStateException(
+                        "No escrow payment held for this milestone. Deposit funds before releasing."));
+        ReleaseRequest releaseRequest = new ReleaseRequest();
+        releaseRequest.setPaymentId(payment.getId());
+        paymentService.release(releaseRequest, currentUser.getId());
         milestone.setStatus(MilestoneStatus.PAID);
         boolean allPaid = !project.getMilestones().isEmpty()
                 && project.getMilestones().stream().allMatch(item -> item.getStatus() == MilestoneStatus.PAID);

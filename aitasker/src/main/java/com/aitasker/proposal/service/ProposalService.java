@@ -113,6 +113,10 @@ public class ProposalService {
                 .toList();
     }
 
+    public ProposalResponseDTO getById(Long proposalId) {
+        return mapToDTO(getProposalById(proposalId));
+    }
+
     // 3. KHÁCH HÀNG CHẤP NHẬN ĐỀ XUẤT
     @Transactional
     public void acceptProposal(Long proposalId, Long clientId) {

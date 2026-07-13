@@ -4,6 +4,7 @@ package com.aitasker.security;
 import com.aitasker.security.jwt.JwtFilter;
 import com.aitasker.security.jwt.JwtProperties;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,9 @@ public class SecurityConfig {
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+    private java.util.List<String> allowedOrigins;
+
     // Phuc An: thêm Bean PasswordEncoder.
     // Mục đích: Cung cấp công cụ cho AuthServiceImpl mã hóa mật khẩu người dùng lúc Register.
     @Bean
@@ -43,7 +47,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.applyPermitDefaultValues();
+        configuration.setAllowedOrigins(allowedOrigins);
+        configuration.setAllowedHeaders(java.util.List.of("*"));
+        configuration.setAllowCredentials(true);
+        configuration.addAllowedMethod("GET");
+        configuration.addAllowedMethod("POST");
         configuration.addAllowedMethod("PUT");
         configuration.addAllowedMethod("DELETE");
         configuration.addAllowedMethod("PATCH");
@@ -56,6 +64,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )

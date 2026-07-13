@@ -117,7 +117,8 @@ public class JobService{
                 request.getSkills(),
                 request.getMinBudget(),
                 request.getMaxBudget(),
-                request.getStatus()
+                request.getStatus(),
+                request.getDeadlineBefore()
         ).stream().map(this::toResponse).toList();
     }
     private JobPost findById(long id){

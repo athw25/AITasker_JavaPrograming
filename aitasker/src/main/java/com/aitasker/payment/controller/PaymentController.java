@@ -78,4 +78,24 @@ public class PaymentController {
         List<Transaction> transactions = paymentService.getTransactionHistory(paymentId);
         return ResponseEntity.ok(ApiResponse.success(transactions));
     }
+
+    @GetMapping("/transactions/me")
+    @Operation(summary = "Xem lịch sử giao dịch của chính người dùng hiện tại")
+    public ResponseEntity<ApiResponse<List<Transaction>>> getMyTransactions(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        List<Transaction> transactions = paymentService.getMyTransactionHistory(userDetails.getUser().getId());
+        return ResponseEntity.ok(ApiResponse.success(transactions));
+    }
+
+    @PutMapping("/{id}/refund")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Hoàn tiền một Payment", description = "Admin chủ động hoàn tiền ngoài luồng Dispute")
+    public ResponseEntity<ApiResponse<Payment>> refund(
+            @PathVariable Long id,
+            @Valid @RequestBody RefundRequest request
+    ) {
+        Payment payment = paymentService.refund(id, request.getAmount(), request.getReason());
+        return ResponseEntity.ok(ApiResponse.success(payment));
+    }
 }

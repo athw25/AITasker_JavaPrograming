@@ -19,7 +19,7 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     private final AttachmentRepository attachmentRepository;
     private final FileSecurityService fileSecurityService;
-    private final Path rootLocation = Paths.get("uploads");
+    private final Path rootLocation = Paths.get("uploads").toAbsolutePath().normalize();
 
     public FileStorageServiceImpl(AttachmentRepository attachmentRepository, FileSecurityService fileSecurityService) {
         this.attachmentRepository = attachmentRepository;
@@ -38,9 +38,14 @@ public class FileStorageServiceImpl implements FileStorageService {
             if (file.isEmpty()) {
                 throw new RuntimeException("File tải lên không hợp lệ hoặc trống!");
             }
-            // Chuẩn hóa tên file bằng UUID để tránh bị ghi đè khi hai người dùng upload file trùng tên
-            String uniqueFileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path destinationFile = this.rootLocation.resolve(Paths.get(uniqueFileName)).normalize().toAbsolutePath();
+            // Chỉ giữ lại phần tên file (bỏ mọi thành phần thư mục như "../") để tránh Path Traversal,
+            // sau đó gắn thêm UUID để tránh bị ghi đè khi hai người dùng upload file trùng tên
+            String safeOriginalName = Paths.get(file.getOriginalFilename()).getFileName().toString();
+            String uniqueFileName = UUID.randomUUID().toString() + "_" + safeOriginalName;
+            Path destinationFile = this.rootLocation.resolve(uniqueFileName).normalize().toAbsolutePath();
+            if (!destinationFile.getParent().equals(this.rootLocation)) {
+                throw new IllegalArgumentException("Tên file tải lên không hợp lệ!");
+            }
 
             // Copy dòng dữ liệu vật lý vào thư mục uploads
             Files.copy(file.getInputStream(), destinationFile, StandardCopyOption.REPLACE_EXISTING);
